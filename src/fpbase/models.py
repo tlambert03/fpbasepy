@@ -1,7 +1,7 @@
 """Main fetching logic."""
 
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -55,9 +55,9 @@ class Filter(BaseModel):
 
     name: str
     manufacturer: str
-    bandcenter: float | None
-    bandwidth: float | None
-    edge: float | None
+    bandcenter: Optional[float]
+    bandwidth: Optional[float]
+    edge: Optional[float]
 
 
 class FilterSpectrum(Spectrum):
@@ -81,13 +81,13 @@ class State(BaseModel):
     emMax: float  # nanometers
     emhex: str = ""
     exhex: str = ""
-    extCoeff: float | None = None  # M^-1 cm^-1
-    qy: float | None = None
+    extCoeff: Optional[float] = None  # M^-1 cm^-1
+    qy: Optional[float] = None
     spectra: list[Spectrum]
-    lifetime: float | None = None  # ns
+    lifetime: Optional[float] = None  # ns
 
     @property
-    def excitation_spectrum(self) -> Spectrum | None:
+    def excitation_spectrum(self) -> Optional[Spectrum]:
         """Return the excitation spectrum, absorption spectrum, or None."""
         spect = next((s for s in self.spectra if s.subtype == "EX"), None)
         if not spect:
@@ -95,7 +95,7 @@ class State(BaseModel):
         return spect
 
     @property
-    def emission_spectrum(self) -> Spectrum | None:
+    def emission_spectrum(self) -> Optional[Spectrum]:
         """Return the emission spectrum or None."""
         return next((s for s in self.spectra if s.subtype == "EM"), None)
 
@@ -106,7 +106,7 @@ class Fluorophore(BaseModel):
     name: str
     id: str
     states: list[State] = Field(default_factory=list)
-    defaultState: int | None = None
+    defaultState: Optional[int] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -126,7 +126,7 @@ class Fluorophore(BaseModel):
         return int(v)
 
     @property
-    def default_state(self) -> State | None:
+    def default_state(self) -> Optional[State]:
         """Return the default state or the first state."""
         for state in self.states:
             if state.id == self.defaultState:
@@ -146,9 +146,9 @@ class OpticalConfig(BaseModel):
 
     name: str
     filters: list[FilterPlacement]
-    camera: SpectrumOwner | None
-    light: SpectrumOwner | None
-    laser: int | None
+    camera: Optional[SpectrumOwner]
+    light: Optional[SpectrumOwner]
+    laser: Optional[int]
 
 
 class Microscope(BaseModel):

@@ -42,9 +42,9 @@ dev = [
     "ipython",
     "types-requests",
     "mypy",
-    "pdbpp",      # https://github.com/pdbpp/pdbpp
+    "pdbpp",          # https://github.com/pdbpp/pdbpp
     "pre-commit",
-    "rich",       # https://github.com/Textualize/rich
+    "rich",           # https://github.com/Textualize/rich
     "ruff",
 ]
 
