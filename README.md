@@ -1,4 +1,4 @@
-# fpbasepy
+# Python FPbase API
 
 [![License](https://img.shields.io/pypi/l/fpbase.svg?color=green)](https://github.com/tlambert03/fpbasepy/raw/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/fpbase.svg?color=green)](https://pypi.org/project/fpbase)
@@ -11,6 +11,14 @@ Python wrapper for FPBase.org GraphQL API.
 See https://www.fpbase.org/graphql for full documentation on the graphql schema and an interactive playground.
 
 This library provides simple Python access to commonly-accessed data.
+
+## Installation
+
+```
+pip install fpbase
+```
+
+## Usage
 
 ```python
 In [1]: from fpbase import get_fluorophore, get_microscope
