@@ -63,6 +63,7 @@ Fluorophore(
     defaultState=None
 )
 
+# fetch info for https://www.fpbase.org/microscope/i6WL2W/
 In [4]: print(get_microscope("i6WL2W"))
 Microscope(
     id='i6WL2WdgcDMgJYtPrpZcaJ',
