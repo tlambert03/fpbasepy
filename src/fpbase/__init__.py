@@ -9,6 +9,7 @@ except PackageNotFoundError:
 __author__ = "Talley Lambert"
 __email__ = "talley.lambert@gmail.com"
 
+from . import models
 from ._fetch import FPbaseClient, get_filter, get_fluorophore, get_microscope
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "get_filter",
     "get_fluorophore",
     "get_microscope",
+    "models",
 ]
