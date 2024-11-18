@@ -14,7 +14,7 @@ import requests
 from ._graphql import DYE_QUERY, FILTER_QUERY, MICROSCOPE_QUERY, PROTEIN_QUERY
 from .models import (
     DyeResponse,
-    FilterSpectrum,
+    Filter,
     FilterSpectrumResponse,
     Fluorophore,
     Microscope,
@@ -83,7 +83,7 @@ class FPbaseClient:
             return self._get_protein_by_id(fluor_info["id"])
         raise ValueError(f"Invalid fluorophore type {fluor_info['type']!r}")
 
-    def get_filter(self, name: str) -> FilterSpectrum:
+    def get_filter(self, name: str) -> Filter:
         """Fetch filter spectrum by name."""
         normed = _norm_name(name)
         try:
@@ -98,7 +98,9 @@ class FPbaseClient:
             raise ValueError(f"Filter {name!r} not found.{suggest}") from e
 
         resp = self._send_query(FILTER_QUERY, {"id": int(filter_id)})
-        return FilterSpectrumResponse.model_validate_json(resp).data.spectrum
+        return FilterSpectrumResponse.model_validate_json(
+            resp
+        ).data.spectrum.ownerFilter
 
     # -----------------------------------------------------------
 
@@ -155,5 +157,5 @@ def get_fluorophore(name: str) -> Fluorophore:
     return FPbaseClient.instance().get_fluorophore(name)
 
 
-def get_filter(name: str) -> FilterSpectrum:
+def get_filter(name: str) -> Filter:
     return FPbaseClient.instance().get_filter(name)
