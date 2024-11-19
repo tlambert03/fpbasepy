@@ -50,10 +50,16 @@ class Spectrum(BaseModel):
     data: list[tuple[float, float]] = Field(..., repr=False)
 
 
-class Filter(BaseModel):
-    """A filter with its properties."""
+class SpectrumOwner(BaseModel):
+    """Something that can own a spectrum."""
 
     name: str
+    spectrum: Spectrum
+
+
+class Filter(SpectrumOwner):
+    """A filter with its properties."""
+
     manufacturer: str
     bandcenter: Optional[float]
     bandwidth: Optional[float]
@@ -64,13 +70,6 @@ class FilterSpectrum(Spectrum):
     """Spectrum owned by a filter."""
 
     ownerFilter: Filter
-
-
-class SpectrumOwner(BaseModel):
-    """Something that can own a spectrum."""
-
-    name: str
-    spectrum: Spectrum
 
 
 class State(BaseModel):

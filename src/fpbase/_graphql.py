@@ -57,7 +57,9 @@ query getProtein($id: String!) {
 }
 """
 
-FILTER_QUERY = """
+# slightly convuluted way to get to filter, since the API
+# doesn't offer a top-level filter query
+SPECTRUM_QUERY = """
 query getSpectrum($id: Int!) {
     spectrum(id: $id) {
         subtype
@@ -68,6 +70,7 @@ query getSpectrum($id: Int!) {
             bandcenter
             bandwidth
             edge
+            spectrum { subtype data }
         }
     }
 }

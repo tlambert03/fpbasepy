@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import requests
 
-from ._graphql import DYE_QUERY, FILTER_QUERY, MICROSCOPE_QUERY, PROTEIN_QUERY
+from ._graphql import DYE_QUERY, SPECTRUM_QUERY, MICROSCOPE_QUERY, PROTEIN_QUERY
 from .models import (
     DyeResponse,
     Filter,
@@ -97,7 +97,7 @@ class FPbaseClient:
                 suggest = ""
             raise ValueError(f"Filter {name!r} not found.{suggest}") from e
 
-        resp = self._send_query(FILTER_QUERY, {"id": int(filter_id)})
+        resp = self._send_query(SPECTRUM_QUERY, {"id": int(filter_id)})
         return FilterSpectrumResponse.model_validate_json(
             resp
         ).data.spectrum.ownerFilter
