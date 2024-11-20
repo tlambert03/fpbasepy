@@ -33,7 +33,7 @@ class SpectrumType(str, Enum):
     QE = "QE"
     AB = "AB"
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         """Return the string representation of the enum."""
         return self.value
 
@@ -49,7 +49,7 @@ class FilterPath(str, Enum):
     EM = "EM"
     BS = "BS"
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         """Return the string representation of the enum."""
         return self.value
 
@@ -65,7 +65,7 @@ class Olig(str, Enum):
     WEAK_DIMER = "WD"
     TETRAMER = "T"
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         """Return the string representation of the enum."""
         return self.value
 
@@ -79,7 +79,7 @@ class SwitchType(str, Enum):
     TIMER = "T"
     OTHER = "O"
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         """Return the string representation of the enum."""
         return self.value
 
@@ -164,7 +164,7 @@ class Fluorophore(BaseModel):
             if "states" not in v and "exMax" in v:
                 out["states"] = [State(**v)]
             return out
-        return v
+        return v  # pragma: no cover
 
     @field_validator("default_state_id", mode="before")
     @classmethod

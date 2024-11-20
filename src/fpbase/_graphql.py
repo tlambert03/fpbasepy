@@ -78,8 +78,6 @@ query getProtein($id: String!) {
 }
 """
 
-# slightly convoluted way to get to filter, since the API
-# doesn't offer a top-level filter query
 SPECTRUM_QUERY = """
 query getSpectrum($id: Int!) {
     spectrum(id: $id) {

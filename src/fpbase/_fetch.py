@@ -7,7 +7,7 @@ import json
 import threading
 from difflib import get_close_matches
 from functools import cached_property
-from typing import TYPE_CHECKING, Never
+from typing import TYPE_CHECKING, Any
 
 import requests
 
@@ -27,7 +27,7 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Mapping
 
 
 class FPbaseClient:
@@ -68,17 +68,17 @@ class FPbaseClient:
         >>> get_fluorophore("mTurquoise2")
         >>> get_fluorophore("Alexa Fluor 488")
         """
-        _ids = self._fluorophore_ids
-        try:
-            fluor_info = _ids[name.lower()]
-        except KeyError as e:
-            _raise_with_suggestion(name, _ids, e, "Fluorophore")
+        fluor_info = _get_or_raise_suggestion(
+            name, self._fluorophore_ids, "Fluorophore"
+        )
 
         if fluor_info["type"] == "d":
             return self._get_dye_by_id(fluor_info["id"])
         elif fluor_info["type"] == "p":
             return self._get_protein_by_id(fluor_info["id"])
-        raise ValueError(f"Invalid fluorophore type {fluor_info['type']!r}")
+        raise ValueError(  # pragma: no cover
+            f"Invalid fluorophore type {fluor_info['type']!r}"
+        )
 
     def get_protein(self, name: str) -> Protein:
         """Fetch protein by name.
@@ -87,12 +87,8 @@ class FPbaseClient:
         --------
         >>> get_protein("EGFP")
         """
-        _ids = self._fluorophore_ids
-        try:
-            fluor_info = _ids[name.lower()]
-        except KeyError as e:
-            _raise_with_suggestion(name, _ids, e, "Protein")
-        if fluor_info["type"] != "p":
+        fluor_info = _get_or_raise_suggestion(name, self._fluorophore_ids, "Protein")
+        if fluor_info["type"] != "p":  # pragma: no cover
             raise ValueError(f"Protein {name!r} not found.")
         return self._get_protein_by_id(fluor_info["id"])
 
@@ -165,10 +161,7 @@ class FPbaseClient:
             "Camera": self._camera_spectrum_ids,
         }[type_]
         normed = _norm_name(name)
-        try:
-            filter_id = possibilities[normed]
-        except KeyError as e:
-            _raise_with_suggestion(name, possibilities, e, type_)
+        filter_id = _get_or_raise_suggestion(normed, possibilities, type_)
 
         resp = self._send_query(SPECTRUM_QUERY, {"id": int(filter_id)})
         return SpectrumResponse.model_validate_json(resp).data.spectrum
@@ -284,12 +277,15 @@ def list_lights() -> list[str]:
     return FPbaseClient.instance().list_lights()
 
 
-def _raise_with_suggestion(
-    query: str, possibilities: Iterable[str], e: Exception, type_: str
-) -> Never:
+def _get_or_raise_suggestion(
+    query: str, possibilities: Mapping[str, Any], type_: str
+) -> Any:
     """Raise a ValueError with a suggestion if a close match is found."""
-    if closest := get_close_matches(query, possibilities, n=1, cutoff=0.5):
-        suggest = f" Did you mean {closest[0]!r}?"
-    else:
-        suggest = ""
-    raise ValueError(f"{type_} {query!r} not found.{suggest}") from e
+    try:
+        return possibilities[query.lower()]
+    except KeyError as e:
+        if closest := get_close_matches(query, possibilities, n=1, cutoff=0.5):
+            suggest = f" Did you mean {closest[0]!r}?"
+        else:
+            suggest = ""
+        raise ValueError(f"{type_} {query!r} not found.{suggest}") from e
