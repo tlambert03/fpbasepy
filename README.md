@@ -8,7 +8,8 @@
 
 Python wrapper for FPBase.org GraphQL API.
 
-See <https://www.fpbase.org/graphql> for full documentation on the graphql schema and an interactive playground.
+See <https://www.fpbase.org/graphql> for an interactive playground and full documentation on the graphql schema
+(click the little book icon on the top left corner).
 
 ## Installation
 
