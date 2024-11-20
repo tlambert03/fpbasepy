@@ -1,10 +1,12 @@
 """Main fetching logic."""
 
-from collections.abc import Iterable
 from enum import Enum
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, Field, computed_field, model_validator
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 __all__ = [
     "Filter",
@@ -172,7 +174,7 @@ class Fluorophore(BaseModel):
             return out
         return v  # pragma: no cover
 
-    def __repr_args__(self) -> Iterable[tuple[str | None, Any]]:
+    def __repr_args__(self) -> "Iterable[tuple[str | None, Any]]":
         """Return the repr args, excluding the default state if it's the only one."""
         for key, val in super().__repr_args__():
             if key == "states" and len(val) == 1 and val[0] == self.default_state:
