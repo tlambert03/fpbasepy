@@ -120,7 +120,7 @@ class FPbaseClient:
     def list_microscopes(self) -> list[str]:
         """List all available microscopes."""
         resp = self._send_query("{ microscopes { id name } }")
-        return [item["name"] for item in json.loads(resp)["data"]["microscopes"]]
+        return [item["id"] for item in json.loads(resp)["data"]["microscopes"]]
 
     def list_filters(self) -> list[str]:
         """List all available filters."""

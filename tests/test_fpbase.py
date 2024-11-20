@@ -53,13 +53,33 @@ def test_get_light_source() -> None:
 
 
 def test_lists() -> None:
-    assert len(fpbase.list_microscopes()) > 0
-    assert len(fpbase.list_fluorophores()) > 0
-    assert len(fpbase.list_filters()) > 0
-    assert len(fpbase.list_cameras()) > 0
-    assert len(fpbase.list_light_sources()) > 0
-    assert len(fpbase.list_dyes()) > 0
-    assert len(fpbase.list_proteins()) > 0
+    result = fpbase.list_microscopes()
+    assert result
+    assert fpbase.get_microscope(result[0])
+
+    result = fpbase.list_fluorophores()
+    assert result
+    assert fpbase.get_fluorophore(result[0])
+
+    result = fpbase.list_filters()
+    assert result
+    assert fpbase.get_filter(result[0])
+
+    result = fpbase.list_cameras()
+    assert result
+    assert fpbase.get_camera(result[0])
+
+    result = fpbase.list_light_sources()
+    assert result
+    assert fpbase.get_light_source(result[0])
+
+    result = fpbase.list_dyes()
+    assert result
+    assert fpbase.get_fluorophore(result[0])
+
+    result = fpbase.list_proteins()
+    assert result
+    assert fpbase.get_protein(result[0])
 
 
 def test_generic_gql_query() -> None:
