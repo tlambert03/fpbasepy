@@ -6,13 +6,16 @@ query getMicroscope($id: String!) {
         opticalConfigs {
             name
             filters {
-                name
                 path
                 reflects
-                spectrum { subtype data }
+                filter {
+                  id
+                  name
+                  spectrum { id subtype data }
+                }
             }
-            camera { name spectrum { subtype data } }
-            light { name spectrum { subtype data } }
+            camera { id name spectrum { id subtype data } }
+            light { id name spectrum { id subtype data } }
             laser
         }
     }
@@ -28,7 +31,7 @@ query getDye($id: Int!) {
         emMax
         extCoeff
         qy
-        spectra { subtype data }
+        spectra { id subtype data }
     }
 }
 """
@@ -38,6 +41,15 @@ query getProtein($id: String!) {
     protein(id: $id) {
         name
         id
+        seq
+        genbank
+        pdb
+        uniprot
+        mw
+        agg
+        switchType
+        primaryReference { doi }
+        references { doi }
         states {
             id
             name
@@ -48,26 +60,50 @@ query getProtein($id: String!) {
             extCoeff
             qy
             lifetime
-            spectra { subtype data }
+            spectra { id subtype data }
         }
         defaultState {
             id
-        }
+            name
+            exMax
+            emMax
+            emhex
+            exhex
+            extCoeff
+            qy
+            lifetime
+            spectra { id subtype data }
+         }
     }
 }
 """
 
-FILTER_QUERY = """
+SPECTRUM_QUERY = """
 query getSpectrum($id: Int!) {
     spectrum(id: $id) {
+        id
         subtype
         data
         ownerFilter {
+            id
             name
             manufacturer
             bandcenter
             bandwidth
             edge
+            spectrum { id subtype data }
+        }
+        ownerCamera {
+            id
+            name
+            manufacturer
+            spectrum { id subtype data }
+        }
+        ownerLight {
+            id
+            name
+            manufacturer
+            spectrum { id subtype data }
         }
     }
 }
