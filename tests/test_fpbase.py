@@ -44,4 +44,7 @@ def test_lists() -> None:
     assert len(fpbase.list_microscopes()) > 0
     assert len(fpbase.list_fluorophores()) > 0
     assert len(fpbase.list_filters()) > 0
+    assert len(fpbase.list_cameras()) > 0
+    assert len(fpbase.list_lights()) > 0
+    assert len(fpbase.list_dyes()) > 0
     assert len(fpbase.list_proteins()) > 0

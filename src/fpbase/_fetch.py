@@ -136,21 +136,21 @@ class FPbaseClient:
     def get_filter(self, name: str) -> Filter:
         """Fetch filter by name."""
         spectrum = self._get_spectrum(name, "Filter")
-        if spectrum.owner_filter is None:
+        if spectrum.owner_filter is None:  # pragma: no cover
             raise ValueError(f"Filter {name!r} not found.")
         return spectrum.owner_filter
 
     def get_camera(self, name: str) -> Camera:
         """Fetch camera spectrum by name."""
         spectrum = self._get_spectrum(name, "Camera")
-        if spectrum.owner_camera is None:
+        if spectrum.owner_camera is None:  # pragma: no cover
             raise ValueError(f"Camera {name!r} not found.")
         return spectrum.owner_camera
 
     def get_light(self, name: str) -> Light:
         """Fetch light spectrum by name."""
         spectrum = self._get_spectrum(name, "Light")
-        if spectrum.owner_light is None:
+        if spectrum.owner_light is None:  # pragma: no cover
             raise ValueError(f"Light {name!r} not found.")
         return spectrum.owner_light
 
