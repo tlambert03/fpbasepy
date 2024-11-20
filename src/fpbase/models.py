@@ -1,9 +1,10 @@
 """Main fetching logic."""
 
+from collections.abc import Iterable
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 __all__ = [
     "Filter",
@@ -93,7 +94,7 @@ class Spectrum(BaseModel):
 
     owner_filter: Optional["Filter"] = Field(None, alias="ownerFilter")
     owner_camera: Optional["Camera"] = Field(None, alias="ownerCamera")
-    owner_light: Optional["Light"] = Field(None, alias="ownerLight")
+    owner_light: Optional["LightSource"] = Field(None, alias="ownerLight")
 
 
 class SpectrumOwner(BaseModel):
@@ -117,7 +118,7 @@ class Camera(SpectrumOwner):
     manufacturer: str = ""
 
 
-class Light(SpectrumOwner):
+class LightSource(SpectrumOwner):
     manufacturer: str = ""
 
 
@@ -125,6 +126,7 @@ class State(BaseModel):
     """Fluorophore state."""
 
     id: int
+    name: str
     exMax: Optional[float] = None  # nanometers
     emMax: Optional[float] = None  # nanometers
     emhex: str = ""
@@ -138,7 +140,7 @@ class State(BaseModel):
     def excitation_spectrum(self) -> Optional[Spectrum]:
         """Return the excitation spectrum, absorption spectrum, or None."""
         spect = next((s for s in self.spectra if s.subtype == "EX"), None)
-        if not spect:
+        if not spect:  # pragma: no cover
             spect = next((s for s in self.spectra if s.subtype == "AB"), None)
         return spect
 
@@ -153,8 +155,8 @@ class Fluorophore(BaseModel):
 
     name: str
     id: str
+    default_state: Optional[State] = Field(None, alias="defaultState")
     states: list[State] = Field(default_factory=list)
-    default_state_id: Optional[int] = Field(None, alias="defaultState")
 
     @model_validator(mode="before")
     @classmethod
@@ -162,24 +164,20 @@ class Fluorophore(BaseModel):
         if isinstance(v, dict):
             out = dict(v)
             if "states" not in v and "exMax" in v:
-                out["states"] = [State(**v)]
+                # this is a single-state fluorophore. probably a Dye.
+                # this is a bit of a hack around the fpbase API
+                state = State(**v)
+                out["states"] = [state]
+                out["defaultState"] = state
             return out
         return v  # pragma: no cover
 
-    @field_validator("default_state_id", mode="before")
-    @classmethod
-    def _v_default_state(cls, v: Any) -> int:
-        if isinstance(v, dict) and "id" in v:
-            return int(v["id"])
-        return int(v)
-
-    @property
-    def default_state(self) -> Optional[State]:
-        """Return the default state or the first state."""
-        for state in self.states:
-            if state.id == self.default_state_id:
-                return state
-        return next(iter(self.states), None)
+    def __repr_args__(self) -> Iterable[tuple[str | None, Any]]:
+        """Return the repr args, excluding the default state if it's the only one."""
+        for key, val in super().__repr_args__():
+            if key == "states" and len(val) == 1 and val[0] == self.default_state:
+                continue
+            yield key, val
 
 
 class Reference(BaseModel):
@@ -218,7 +216,7 @@ class OpticalConfig(BaseModel):
     name: str
     filters: list[FilterPlacement]
     camera: Optional["Camera"]
-    light: Optional["Light"]
+    light: Optional["LightSource"]
     laser: Optional[int]
 
 

@@ -7,7 +7,7 @@ import json
 import threading
 from difflib import get_close_matches
 from functools import cached_property
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 import requests
 
@@ -17,7 +17,7 @@ from .models import (
     DyeResponse,
     Filter,
     Fluorophore,
-    Light,
+    LightSource,
     Microscope,
     MicroscopeResponse,
     Protein,
@@ -28,6 +28,9 @@ from .models import (
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+FPBASE_URL: Final = "https://www.fpbase.org/graphql/"
+_HEADERS = {"Content-Type": "application/json", "User-Agent": "fpbase-py"}
 
 
 class FPbaseClient:
@@ -42,12 +45,10 @@ class FPbaseClient:
                     cls.__instance = cls()
         return cls.__instance
 
-    def __init__(self, base_url: str = "https://www.fpbase.org/graphql/"):
+    def __init__(self, base_url: str = FPBASE_URL):
         self.base_url = base_url
         self.session = requests.Session()
-        self.session.headers.update(
-            {"Content-Type": "application/json", "User-Agent": "fpbase-py"}
-        )
+        self.session.headers.update(_HEADERS)
         self._cache: dict[str, bytes] = {}
 
     def get_microscope(self, id: str = "i6WL2W") -> Microscope:
@@ -129,7 +130,7 @@ class FPbaseClient:
         """List all available cameras."""
         return sorted(self._camera_spectrum_ids.keys())
 
-    def list_lights(self) -> list[str]:
+    def list_light_sources(self) -> list[str]:
         """List all available lights."""
         return sorted(self._light_spectrum_ids.keys())
 
@@ -147,7 +148,7 @@ class FPbaseClient:
             raise ValueError(f"Camera {name!r} not found.")
         return spectrum.owner_camera
 
-    def get_light(self, name: str) -> Light:
+    def get_light_source(self, name: str) -> LightSource:
         """Fetch light spectrum by name."""
         spectrum = self._get_spectrum(name, "Light")
         if spectrum.owner_light is None:  # pragma: no cover
@@ -169,16 +170,14 @@ class FPbaseClient:
     # -----------------------------------------------------------
 
     def _send_query(self, query: str, variables: dict | None = None) -> bytes:
-        payload = {"query": query, "variables": variables or {}}
-        payload_str = json.dumps(payload, sort_keys=True)  # Convert to JSON string
         # Create a hash
-        hashkey = hashlib.md5(payload_str.encode("utf-8")).hexdigest()
-        if hashkey not in self._cache:
+        if (key := _hashargs(self.base_url, query, variables)) not in self._cache:
+            payload = {"query": query, "variables": variables or {}}
             data = json.dumps(payload).encode("utf-8")
             response = self.session.post(self.base_url, data=data)
             response.raise_for_status()
-            self._cache[hashkey] = response.content
-        return self._cache[hashkey]
+            self._cache[key] = response.content
+        return self._cache[key]
 
     @cached_property
     def _fluorophore_ids(self) -> dict[str, dict[str, str]]:
@@ -241,8 +240,8 @@ def get_camera(name: str) -> Camera:
     return FPbaseClient.instance().get_camera(name)
 
 
-def get_light(name: str) -> Light:
-    return FPbaseClient.instance().get_light(name)
+def get_light_source(name: str) -> LightSource:
+    return FPbaseClient.instance().get_light_source(name)
 
 
 def get_protein(name: str) -> Protein:
@@ -273,8 +272,8 @@ def list_cameras() -> list[str]:
     return FPbaseClient.instance().list_cameras()
 
 
-def list_lights() -> list[str]:
-    return FPbaseClient.instance().list_lights()
+def list_light_sources() -> list[str]:
+    return FPbaseClient.instance().list_light_sources()
 
 
 def _get_or_raise_suggestion(
@@ -286,6 +285,77 @@ def _get_or_raise_suggestion(
     except KeyError as e:
         if closest := get_close_matches(query, possibilities, n=1, cutoff=0.5):
             suggest = f" Did you mean {closest[0]!r}?"
-        else:
+        else:  # pragma: no cover
             suggest = ""
         raise ValueError(f"{type_} {query!r} not found.{suggest}") from e
+
+
+_RESPONSE_CACHE: dict[str, dict] = {}
+
+
+def graphql_query(
+    query: str,
+    variables: dict | None = None,
+    *,
+    session: requests.Session | None = None,
+) -> dict[str, Any]:
+    """Send a generic GraphQL query to the FPbase API.
+
+    See docs and test out queries at https://www.fpbase.org/graphql/
+
+    Parameters
+    ----------
+    query : str
+        A graphql query string. For example, "{ proteins { name } }"
+    variables : dict | None, optional
+        If the query requires variables, pass them here, by default None
+    session : requests.Session | None, optional
+        Optionally pass a requests session, by default, will create a new session.
+
+    Returns
+    -------
+    dict[str, Any]
+        JSON response from the API deserialized into a Python dictionary.
+
+    Examples
+    --------
+    # get all protein names and sequences
+    >>> data = fpbase.graphql_query("{proteins { name seq } }")
+
+    # get specific fields for a specific protein
+    # note that single/double quotes are NOT interchangeable here
+    >>> data = fpbase.graphql_query('{protein(id: "R9NL8") { name seq } }')
+
+    # get optical configs for a microscope, using a variable
+    >>> q = "query getScope($id: String!){ microscope(id: $id){ name opticalConfigs {name} } }"
+    >>> data = fpbase.graphql_query(q, {"id": "i6WL2WdgcDMgJYtPrpZcaJ"})
+    """  # noqa: E501
+    url = FPBASE_URL
+    if (key := _hashargs(url, query, variables)) not in _RESPONSE_CACHE:
+        data_bytes = _fetch_query(query, variables, session=session, url=url)
+        _RESPONSE_CACHE[key] = json.loads(data_bytes)
+    return _RESPONSE_CACHE[key]
+
+
+def _hashargs(*args: str | dict | None | tuple) -> str:
+    hasher = hashlib.md5()
+    for arg in args:
+        if isinstance(arg, dict):
+            arg = tuple(sorted(arg.items()))
+        hasher.update(str(arg).encode("utf-8"))
+    return hasher.hexdigest()
+
+
+def _fetch_query(
+    query: str,
+    variables: dict | None = None,
+    *,
+    session: requests.Session | None = None,
+    url: str = FPBASE_URL,
+) -> bytes:
+    payload = {"query": query, "variables": variables or {}}
+    data = json.dumps(payload).encode("utf-8")
+    post = requests.post if session is None else session.post
+    response = post(url, data=data, headers=_HEADERS)
+    response.raise_for_status()
+    return response.content

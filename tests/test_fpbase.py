@@ -40,11 +40,33 @@ def test_get_filter(name: str) -> None:
     assert filt.name == name
 
 
+def test_get_camera() -> None:
+    cam = fpbase.get_camera("Andor Zyla 5.5")
+    repr(cam)
+    assert cam.name == "Andor Zyla 5.5"
+
+
+def test_get_light_source() -> None:
+    light = fpbase.get_light_source("Lumencor Celesta UV")
+    repr(light)
+    assert light.name == "Lumencor Celesta UV"
+
+
 def test_lists() -> None:
     assert len(fpbase.list_microscopes()) > 0
     assert len(fpbase.list_fluorophores()) > 0
     assert len(fpbase.list_filters()) > 0
     assert len(fpbase.list_cameras()) > 0
-    assert len(fpbase.list_lights()) > 0
+    assert len(fpbase.list_light_sources()) > 0
     assert len(fpbase.list_dyes()) > 0
     assert len(fpbase.list_proteins()) > 0
+
+
+def test_generic_gql_query() -> None:
+    data = fpbase.graphql_query("{proteins { name seq } }")
+    EGFP = next(p for p in data["data"]["proteins"] if p["name"] == "EGFP")
+    assert EGFP["seq"].startswith("MVSK")
+
+    q = "query getProtein($id: String!){ protein(id: $id){ name } }"
+    data = fpbase.graphql_query(q, {"id": "R9NL8"})
+    assert data["data"]["protein"]["name"] == "EGFP"
