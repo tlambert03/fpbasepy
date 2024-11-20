@@ -1,14 +1,13 @@
 """Main fetching logic."""
 
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 
 __all__ = [
     "Filter",
     "FilterPlacement",
-    "FilterSpectrum",
     "Fluorophore",
     "Microscope",
     "OpticalConfig",
@@ -43,16 +42,64 @@ class SpectrumType(str, Enum):
         return repr(self.value)
 
 
+class FilterPath(str, Enum):
+    """Placement of a filter in an optical config."""
+
+    EX = "EX"
+    EM = "EM"
+    BS = "BS"
+
+    def __str__(self) -> str:
+        """Return the string representation of the enum."""
+        return self.value
+
+    def __repr__(self) -> str:
+        """Return the repr of the enum."""
+        return repr(self.value)
+
+
+class Olig(str, Enum):
+    MONOMER = "M"
+    DIMER = "D"
+    TANDEM_DIMER = "TD"
+    WEAK_DIMER = "WD"
+    TETRAMER = "T"
+
+    def __str__(self) -> str:
+        """Return the string representation of the enum."""
+        return self.value
+
+
+class SwitchType(str, Enum):
+    BASIC = "B"
+    PHOTOACTIVATABLE = "PA"
+    PHOTOSWITCHABLE = "PS"
+    PHOTOCONVERTIBLE = "PC"
+    MULTIPHOTOCHROMIC = "MP"
+    TIMER = "T"
+    OTHER = "O"
+
+    def __str__(self) -> str:
+        """Return the string representation of the enum."""
+        return self.value
+
+
 class Spectrum(BaseModel):
     """Spectrum with data."""
 
+    id: int
     subtype: SpectrumType
     data: list[tuple[float, float]] = Field(..., repr=False)
+
+    owner_filter: Optional["Filter"] = Field(None, alias="ownerFilter")
+    owner_camera: Optional["Camera"] = Field(None, alias="ownerCamera")
+    owner_light: Optional["Light"] = Field(None, alias="ownerLight")
 
 
 class SpectrumOwner(BaseModel):
     """Something that can own a spectrum."""
 
+    id: int
     name: str
     spectrum: Spectrum
 
@@ -60,29 +107,31 @@ class SpectrumOwner(BaseModel):
 class Filter(SpectrumOwner):
     """A filter with its properties."""
 
-    manufacturer: str
-    bandcenter: Optional[float]
-    bandwidth: Optional[float]
-    edge: Optional[float]
+    manufacturer: str = ""
+    bandcenter: Optional[float] = None
+    bandwidth: Optional[float] = None
+    edge: Optional[float] = None
 
 
-class FilterSpectrum(Spectrum):
-    """Spectrum owned by a filter."""
+class Camera(SpectrumOwner):
+    manufacturer: str = ""
 
-    ownerFilter: Filter
+
+class Light(SpectrumOwner):
+    manufacturer: str = ""
 
 
 class State(BaseModel):
     """Fluorophore state."""
 
     id: int
-    exMax: float  # nanometers
-    emMax: float  # nanometers
+    exMax: Optional[float] = None  # nanometers
+    emMax: Optional[float] = None  # nanometers
     emhex: str = ""
     exhex: str = ""
-    extCoeff: Optional[float] = None  # M^-1 cm^-1
+    ext_coeff: Optional[float] = Field(None, alias="extCoeff")  # M^-1 cm^-1
     qy: Optional[float] = None
-    spectra: list[Spectrum]
+    spectra: list[Spectrum] = Field(default_factory=list)
     lifetime: Optional[float] = None  # ns
 
     @property
@@ -105,7 +154,7 @@ class Fluorophore(BaseModel):
     name: str
     id: str
     states: list[State] = Field(default_factory=list)
-    defaultState: Optional[int] = None
+    default_state_id: Optional[int] = Field(None, alias="defaultState")
 
     @model_validator(mode="before")
     @classmethod
@@ -117,7 +166,7 @@ class Fluorophore(BaseModel):
             return out
         return v
 
-    @field_validator("defaultState", mode="before")
+    @field_validator("default_state_id", mode="before")
     @classmethod
     def _v_default_state(cls, v: Any) -> int:
         if isinstance(v, dict) and "id" in v:
@@ -128,15 +177,38 @@ class Fluorophore(BaseModel):
     def default_state(self) -> Optional[State]:
         """Return the default state or the first state."""
         for state in self.states:
-            if state.id == self.defaultState:
+            if state.id == self.default_state_id:
                 return state
         return next(iter(self.states), None)
 
 
-class FilterPlacement(SpectrumOwner):
+class Reference(BaseModel):
+    doi: str
+
+    @computed_field
+    def url(self) -> str:
+        """Return the DOI URL."""
+        return f"https://doi.org/{self.doi}"
+
+
+class Protein(Fluorophore):
+    seq: Optional[str] = None
+    pdb: list[str] = Field(default_factory=list)
+    genbank: Optional[str] = None
+    uniprot: Optional[str] = None
+    agg: Optional[Olig] = None
+    switch_type: Optional[SwitchType] = Field(None, alias="switchType")
+    primary_reference: Optional[Reference] = Field(None, alias="primaryReference")
+    references: list[Reference] = Field(default_factory=list)
+    states: list[State] = Field(default_factory=list)
+    # default_state: Optional[State] = Field(None, alias="defaultState")
+
+
+class FilterPlacement(BaseModel):
     """A filter placed in a microscope."""
 
-    path: Literal["EX", "EM", "BS"]
+    path: FilterPath
+    filter: Filter
     reflects: bool = False
 
 
@@ -145,8 +217,8 @@ class OpticalConfig(BaseModel):
 
     name: str
     filters: list[FilterPlacement]
-    camera: Optional[SpectrumOwner]
-    light: Optional[SpectrumOwner]
+    camera: Optional["Camera"]
+    light: Optional["Light"]
     laser: Optional[int]
 
 
@@ -169,7 +241,7 @@ class MicroscopeResponse(BaseModel):
 
 
 class _ProteinPayload(BaseModel):
-    protein: Fluorophore
+    protein: Protein
 
 
 class ProteinResponse(BaseModel):
@@ -188,43 +260,11 @@ class DyeResponse(BaseModel):
     data: _DyePayload
 
 
-class _FilterSpectrumPayload(BaseModel):
-    spectrum: FilterSpectrum
+class _SpectrumPayload(BaseModel):
+    spectrum: Spectrum
 
 
-class FilterSpectrumResponse(BaseModel):
+class SpectrumResponse(BaseModel):
     """Response for a filter spectrum query."""
 
-    data: _FilterSpectrumPayload
-
-
-# WIP
-# def generate_graphql_query(model: type[BaseModel], model_name: str = "") -> str:
-#     def get_fields(model: type[BaseModel]) -> str:
-#         fields = []
-#         for name, field in model.model_fields.items():
-#             annotation = field.annotation
-
-#             if isinstance(annotation, type) and issubclass(annotation, BaseModel):
-#                 sub_fields = get_fields(annotation)
-#                 fields.append(f"{name} {{ {sub_fields} }}")
-#             elif (
-#                 get_origin(annotation) in (list, tuple)
-#                 and isinstance(type_ := get_args(annotation)[0], type)
-#                 and issubclass(type_, BaseModel)
-#             ):
-#                 sub_fields = get_fields(type_)
-#                 fields.append(f"{name} {{ {sub_fields} }}")
-#             else:
-#                 fields.append(name)
-#         return "\n".join(fields)
-
-#     fields_str = get_fields(model)
-#     model_name = model_name or model.__name__
-#     return f"""
-#     query get{model_name}($id: String!) {{
-#         {model_name.lower()}(id: $id) {{
-#             {fields_str}
-#         }}
-#     }}
-#     """
+    data: _SpectrumPayload
