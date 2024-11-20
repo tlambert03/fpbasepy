@@ -168,7 +168,15 @@ Microscope(
                 ),
                 FilterPlacement(
                     path='BS',
-                    filter=Filter(id=10, name='Chroma T425lpxr', spectrum=Spectrum(id=333, subtype='LP', owner_filter=None, owner_camera=None, owner_light=None), manufacturer='', bandcenter=None, bandwidth=None, edge=None),
+                    filter=Filter(
+                        id=10,
+                        name='Chroma T425lpxr',
+                        spectrum=Spectrum(id=333, subtype='LP', owner_filter=None, owner_camera=None, owner_light=None),
+                        manufacturer='',
+                        bandcenter=None,
+                        bandwidth=None,
+                        edge=None
+                    ),
                     reflects=False
                 ),
                 FilterPlacement(
@@ -185,8 +193,18 @@ Microscope(
                     reflects=False
                 )
             ],
-            camera=Camera(id=4, name='Andor Zyla 4.2 PLUS', spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
-            light=LightSource(id=9, name='SOLA 395', spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
+            camera=Camera(
+                id=4,
+                name='Andor Zyla 4.2 PLUS',
+                spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
+            light=LightSource(
+                id=9,
+                name='SOLA 395',
+                spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
             laser=None
         ),
         OpticalConfig(
@@ -207,7 +225,15 @@ Microscope(
                 ),
                 FilterPlacement(
                     path='BS',
-                    filter=Filter(id=62, name='Chroma 59022bs', spectrum=Spectrum(id=385, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None), manufacturer='', bandcenter=None, bandwidth=None, edge=None),
+                    filter=Filter(
+                        id=62,
+                        name='Chroma 59022bs',
+                        spectrum=Spectrum(id=385, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None),
+                        manufacturer='',
+                        bandcenter=None,
+                        bandwidth=None,
+                        edge=None
+                    ),
                     reflects=False
                 ),
                 FilterPlacement(
@@ -224,8 +250,18 @@ Microscope(
                     reflects=False
                 )
             ],
-            camera=Camera(id=4, name='Andor Zyla 4.2 PLUS', spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
-            light=LightSource(id=9, name='SOLA 395', spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
+            camera=Camera(
+                id=4,
+                name='Andor Zyla 4.2 PLUS',
+                spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
+            light=LightSource(
+                id=9,
+                name='SOLA 395',
+                spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
             laser=None
         ),
         OpticalConfig(
@@ -246,7 +282,15 @@ Microscope(
                 ),
                 FilterPlacement(
                     path='BS',
-                    filter=Filter(id=62, name='Chroma 59022bs', spectrum=Spectrum(id=385, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None), manufacturer='', bandcenter=None, bandwidth=None, edge=None),
+                    filter=Filter(
+                        id=62,
+                        name='Chroma 59022bs',
+                        spectrum=Spectrum(id=385, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None),
+                        manufacturer='',
+                        bandcenter=None,
+                        bandwidth=None,
+                        edge=None
+                    ),
                     reflects=False
                 ),
                 FilterPlacement(
@@ -263,8 +307,18 @@ Microscope(
                     reflects=False
                 )
             ],
-            camera=Camera(id=4, name='Andor Zyla 4.2 PLUS', spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
-            light=LightSource(id=9, name='SOLA 395', spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
+            camera=Camera(
+                id=4,
+                name='Andor Zyla 4.2 PLUS',
+                spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
+            light=LightSource(
+                id=9,
+                name='SOLA 395',
+                spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
             laser=None
         ),
         OpticalConfig(
@@ -285,7 +339,15 @@ Microscope(
                 ),
                 FilterPlacement(
                     path='BS',
-                    filter=Filter(id=62, name='Chroma 59022bs', spectrum=Spectrum(id=385, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None), manufacturer='', bandcenter=None, bandwidth=None, edge=None),
+                    filter=Filter(
+                        id=62,
+                        name='Chroma 59022bs',
+                        spectrum=Spectrum(id=385, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None),
+                        manufacturer='',
+                        bandcenter=None,
+                        bandwidth=None,
+                        edge=None
+                    ),
                     reflects=False
                 ),
                 FilterPlacement(
@@ -302,8 +364,18 @@ Microscope(
                     reflects=False
                 )
             ],
-            camera=Camera(id=4, name='Andor Zyla 4.2 PLUS', spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
-            light=LightSource(id=9, name='SOLA 395', spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
+            camera=Camera(
+                id=4,
+                name='Andor Zyla 4.2 PLUS',
+                spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
+            light=LightSource(
+                id=9,
+                name='SOLA 395',
+                spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
             laser=None
         ),
         OpticalConfig(
@@ -324,7 +396,15 @@ Microscope(
                 ),
                 FilterPlacement(
                     path='BS',
-                    filter=Filter(id=6, name='Chroma T660lpxr', spectrum=Spectrum(id=329, subtype='LP', owner_filter=None, owner_camera=None, owner_light=None), manufacturer='', bandcenter=None, bandwidth=None, edge=None),
+                    filter=Filter(
+                        id=6,
+                        name='Chroma T660lpxr',
+                        spectrum=Spectrum(id=329, subtype='LP', owner_filter=None, owner_camera=None, owner_light=None),
+                        manufacturer='',
+                        bandcenter=None,
+                        bandwidth=None,
+                        edge=None
+                    ),
                     reflects=False
                 ),
                 FilterPlacement(
@@ -341,8 +421,18 @@ Microscope(
                     reflects=False
                 )
             ],
-            camera=Camera(id=4, name='Andor Zyla 4.2 PLUS', spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
-            light=LightSource(id=9, name='SOLA 395', spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
+            camera=Camera(
+                id=4,
+                name='Andor Zyla 4.2 PLUS',
+                spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
+            light=LightSource(
+                id=9,
+                name='SOLA 395',
+                spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
             laser=None
         ),
         OpticalConfig(
@@ -363,7 +453,15 @@ Microscope(
                 ),
                 FilterPlacement(
                     path='BS',
-                    filter=Filter(id=60, name='Chroma 69008bs', spectrum=Spectrum(id=383, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None), manufacturer='', bandcenter=None, bandwidth=None, edge=None),
+                    filter=Filter(
+                        id=60,
+                        name='Chroma 69008bs',
+                        spectrum=Spectrum(id=383, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None),
+                        manufacturer='',
+                        bandcenter=None,
+                        bandwidth=None,
+                        edge=None
+                    ),
                     reflects=False
                 ),
                 FilterPlacement(
@@ -380,8 +478,18 @@ Microscope(
                     reflects=False
                 )
             ],
-            camera=Camera(id=4, name='Andor Zyla 4.2 PLUS', spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
-            light=LightSource(id=9, name='SOLA 395', spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
+            camera=Camera(
+                id=4,
+                name='Andor Zyla 4.2 PLUS',
+                spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
+            light=LightSource(
+                id=9,
+                name='SOLA 395',
+                spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
             laser=None
         ),
         OpticalConfig(
@@ -402,7 +510,15 @@ Microscope(
                 ),
                 FilterPlacement(
                     path='BS',
-                    filter=Filter(id=60, name='Chroma 69008bs', spectrum=Spectrum(id=383, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None), manufacturer='', bandcenter=None, bandwidth=None, edge=None),
+                    filter=Filter(
+                        id=60,
+                        name='Chroma 69008bs',
+                        spectrum=Spectrum(id=383, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None),
+                        manufacturer='',
+                        bandcenter=None,
+                        bandwidth=None,
+                        edge=None
+                    ),
                     reflects=False
                 ),
                 FilterPlacement(
@@ -419,8 +535,18 @@ Microscope(
                     reflects=False
                 )
             ],
-            camera=Camera(id=4, name='Andor Zyla 4.2 PLUS', spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
-            light=LightSource(id=9, name='SOLA 395', spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
+            camera=Camera(
+                id=4,
+                name='Andor Zyla 4.2 PLUS',
+                spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
+            light=LightSource(
+                id=9,
+                name='SOLA 395',
+                spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
             laser=None
         ),
         OpticalConfig(
@@ -441,7 +567,15 @@ Microscope(
                 ),
                 FilterPlacement(
                     path='BS',
-                    filter=Filter(id=60, name='Chroma 69008bs', spectrum=Spectrum(id=383, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None), manufacturer='', bandcenter=None, bandwidth=None, edge=None),
+                    filter=Filter(
+                        id=60,
+                        name='Chroma 69008bs',
+                        spectrum=Spectrum(id=383, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None),
+                        manufacturer='',
+                        bandcenter=None,
+                        bandwidth=None,
+                        edge=None
+                    ),
                     reflects=False
                 ),
                 FilterPlacement(
@@ -458,8 +592,18 @@ Microscope(
                     reflects=False
                 )
             ],
-            camera=Camera(id=4, name='Andor Zyla 4.2 PLUS', spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
-            light=LightSource(id=9, name='SOLA 395', spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
+            camera=Camera(
+                id=4,
+                name='Andor Zyla 4.2 PLUS',
+                spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
+            light=LightSource(
+                id=9,
+                name='SOLA 395',
+                spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
             laser=None
         ),
         OpticalConfig(
@@ -480,7 +624,15 @@ Microscope(
                 ),
                 FilterPlacement(
                     path='BS',
-                    filter=Filter(id=60, name='Chroma 69008bs', spectrum=Spectrum(id=383, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None), manufacturer='', bandcenter=None, bandwidth=None, edge=None),
+                    filter=Filter(
+                        id=60,
+                        name='Chroma 69008bs',
+                        spectrum=Spectrum(id=383, subtype='BS', owner_filter=None, owner_camera=None, owner_light=None),
+                        manufacturer='',
+                        bandcenter=None,
+                        bandwidth=None,
+                        edge=None
+                    ),
                     reflects=False
                 ),
                 FilterPlacement(
@@ -497,8 +649,18 @@ Microscope(
                     reflects=False
                 )
             ],
-            camera=Camera(id=4, name='Andor Zyla 4.2 PLUS', spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
-            light=LightSource(id=9, name='SOLA 395', spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None), manufacturer=''),
+            camera=Camera(
+                id=4,
+                name='Andor Zyla 4.2 PLUS',
+                spectrum=Spectrum(id=1328, subtype='QE', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
+            light=LightSource(
+                id=9,
+                name='SOLA 395',
+                spectrum=Spectrum(id=394, subtype='PD', owner_filter=None, owner_camera=None, owner_light=None),
+                manufacturer=''
+            ),
             laser=None
         )
     ]
