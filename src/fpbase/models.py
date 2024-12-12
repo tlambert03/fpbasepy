@@ -1,12 +1,32 @@
 """Main fetching logic."""
 
+from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Optional, TypeVar
 
-from pydantic import BaseModel, Field, computed_field, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    Field,
+    computed_field,
+    model_validator,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+
+def _null_to_list(v: Any) -> list:
+    if v is None:
+        return []
+    elif isinstance(v, Sequence):
+        return list(v)
+    raise ValueError(f"Expected a list or None, got {v!r}")  # pragma: no cover
+
+
+T = TypeVar("T")
+# type that accepts null as json input and returns an empty list
+SafeList = Annotated[list[T], BeforeValidator(_null_to_list)]
 
 __all__ = [
     "Filter",
@@ -135,7 +155,7 @@ class State(BaseModel):
     exhex: str = ""
     ext_coeff: Optional[float] = Field(None, alias="extCoeff")  # M^-1 cm^-1
     qy: Optional[float] = None
-    spectra: list[Spectrum] = Field(default_factory=list)
+    spectra: SafeList[Spectrum] = Field(default_factory=list)
     lifetime: Optional[float] = None  # ns
 
     @property
@@ -158,7 +178,7 @@ class Fluorophore(BaseModel):
     name: str
     id: str
     default_state: Optional[State] = Field(None, alias="defaultState")
-    states: list[State] = Field(default_factory=list)
+    states: SafeList[State] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod
@@ -193,14 +213,14 @@ class Reference(BaseModel):
 
 class Protein(Fluorophore):
     seq: Optional[str] = None
-    pdb: list[str] = Field(default_factory=list)
+    pdb: SafeList[str] = Field(default_factory=list)
     genbank: Optional[str] = None
     uniprot: Optional[str] = None
     agg: Optional[Olig] = None
     switch_type: Optional[SwitchType] = Field(None, alias="switchType")
     primary_reference: Optional[Reference] = Field(None, alias="primaryReference")
-    references: list[Reference] = Field(default_factory=list)
-    states: list[State] = Field(default_factory=list)
+    references: SafeList[Reference] = Field(default_factory=list)
+    states: SafeList[State] = Field(default_factory=list)
     # default_state: Optional[State] = Field(None, alias="defaultState")
 
 
@@ -216,7 +236,7 @@ class OpticalConfig(BaseModel):
     """A collection of filters and light sources."""
 
     name: str
-    filters: list[FilterPlacement]
+    filters: SafeList[FilterPlacement]
     camera: Optional["Camera"]
     light: Optional["LightSource"]
     laser: Optional[int]
@@ -227,7 +247,7 @@ class Microscope(BaseModel):
 
     id: str
     name: str
-    opticalConfigs: list[OpticalConfig]
+    opticalConfigs: SafeList[OpticalConfig]
 
 
 class _MicroscopePayload(BaseModel):

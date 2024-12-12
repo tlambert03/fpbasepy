@@ -90,3 +90,8 @@ def test_generic_gql_query() -> None:
     q = "query getProtein($id: String!){ protein(id: $id){ name } }"
     data = fpbase.graphql_query(q, {"id": "R9NL8"})
     assert data["data"]["protein"]["name"] == "EGFP"
+
+
+@pytest.mark.parametrize("name", ["Clover1.5", "6C", "dClover2 A206K"])
+def test_fluors_with_no_pdb(name: str) -> None:
+    fpbase.get_fluorophore(name)
