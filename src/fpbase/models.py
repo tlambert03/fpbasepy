@@ -21,7 +21,7 @@ def _null_to_list(v: Any) -> list:
         return []
     elif isinstance(v, Sequence):
         return list(v)
-    raise ValueError(f"Expected a list or None, got {v!r}")
+    raise ValueError(f"Expected a list or None, got {v!r}")  # pragma: no cover
 
 
 T = TypeVar("T")
