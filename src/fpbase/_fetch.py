@@ -225,7 +225,6 @@ def _norm_name(name: str) -> str:
 
 
 def get_microscope(id: str = "i6WL2W") -> Microscope:
-    print("microscope", id)
     return FPbaseClient.instance().get_microscope(id)
 
 
@@ -234,17 +233,14 @@ def get_fluorophore(name: str) -> Fluorophore:
 
 
 def get_filter(name: str) -> Filter:
-    print("filter", name)
     return FPbaseClient.instance().get_filter(name)
 
 
 def get_camera(name: str) -> Camera:
-    print("camera", name)
     return FPbaseClient.instance().get_camera(name)
 
 
 def get_light_source(name: str) -> LightSource:
-    print("light", name)
     return FPbaseClient.instance().get_light_source(name)
 
 
