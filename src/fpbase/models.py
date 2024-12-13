@@ -55,6 +55,7 @@ class SpectrumType(str, Enum):
     PD = "PD"
     QE = "QE"
     AB = "AB"
+    SP = "SP"
 
     def __str__(self) -> str:  # pragma: no cover
         """Return the string representation of the enum."""
