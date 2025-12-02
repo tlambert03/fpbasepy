@@ -24,16 +24,30 @@ jobs:
       - run: pipx run check-manifest
 
   test:
-    uses: pyapp-kit/workflows/.github/workflows/test-pyrepo.yml@v2
-    with:
-      os: ${{ matrix.platform }}
-      python-version: ${{ matrix.python-version }}
-      coverage-upload: artifact
+    name: Test
+    runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-        platform: [ubuntu-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        os: [ubuntu-latest]
+        resolution: ["highest", "lowest-direct"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+      - run: uv run --group test coverage run -p -m pytest -v --color=yes
+        env:
+          UV_NO_DEV: "1"
+          UV_RESOLUTION: ${{ matrix.resolution }}
+          PYTEST_ADDOPTS: ${{ matrix.resolution == 'lowest-direct' && '-W ignore' || '' }}
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v5
+        with:
+          name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.resolution }}
+          path: ./.coverage*
+          include-hidden-files: true
 
   upload_coverage:
     if: always()
