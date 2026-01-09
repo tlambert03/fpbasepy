@@ -7,11 +7,6 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "vcs"
 
-# read more about configuring hatch at:
-# https://hatch.pypa.io/latest/config/build/
-[tool.hatch.build.targets.wheel]
-only-include = ["src"]
-sources = ["src"]
 
 # https://peps.python.org/pep-0621/
 [project]
@@ -31,22 +26,27 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
-dependencies = ['pydantic', 'requests']
+dependencies = ["pydantic>=2.8", "requests>=2.31"]
 
-# https://peps.python.org/pep-0621/#dependencies-optional-dependencies
-[project.optional-dependencies]
-test = ["pytest", "pytest-cov"]
-dev = [
-    "ipython",
-    "types-requests",
-    "mypy",
-    "pdbpp",          # https://github.com/pdbpp/pdbpp
-    "pre-commit",
-    "rich",           # https://github.com/Textualize/rich
-    "ruff",
+[dependency-groups]
+test = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
 ]
+dev = [
+    { include-group = "test" },
+    "ipython>=8.18.1",
+    "mypy>=1.19.0",
+    "pdbpp>=0.11.7",
+    "pre-commit>=4.3.0",
+    "rich>=14.2.0",
+    "ruff>=0.14.7",
+    "types-requests>=2.32.4.20250913",
+]
+
 
 [project.urls]
 homepage = "https://github.com/tlambert03/fpbasepy"
