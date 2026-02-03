@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import threading
 from difflib import get_close_matches
 from functools import cached_property
@@ -11,7 +12,13 @@ from typing import TYPE_CHECKING, Any, Final
 
 import requests
 
-from ._graphql import DYE_QUERY, MICROSCOPE_QUERY, PROTEIN_QUERY, SPECTRUM_QUERY
+from ._graphql import (
+    DYE_QUERY,
+    MICROSCOPE_QUERY,
+    PROTEIN_QUERY,
+    SPECTRUM_QUERY,
+    build_multiple_query,
+)
 from .models import (
     Camera,
     DyeResponse,
@@ -27,7 +34,7 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
 FPBASE_URL: Final = "https://www.fpbase.org/graphql/"
 _HEADERS = {"Content-Type": "application/json", "User-Agent": "fpbase-py"}
@@ -219,9 +226,261 @@ class FPbaseClient:
         resp = self._send_query(PROTEIN_QUERY, {"id": id})
         return ProteinResponse.model_validate_json(resp).data.protein
 
+    def get_multiple_proteins(self, names: Sequence[str]) -> dict[str, Protein | None]:
+        """Fetch multiple proteins by name in a single request.
+
+        Parameters
+        ----------
+        names : Sequence[str]
+            Protein names, slugs, or IDs to fetch
+
+        Returns
+        -------
+        dict[str, Protein | None]
+            Mapping of input name -> Protein object (or None if not found)
+
+        Examples
+        --------
+        >>> proteins = client.get_multiple_proteins(["EGFP", "mCherry", "mTurquoise2"])
+        >>> proteins["EGFP"].default_state.ex_max
+        488.0
+        """
+        if not names:
+            return {}
+
+        # Resolve names to IDs using existing _fluorophore_ids cache
+        items = {}
+        name_to_alias = {}
+        for name in names:
+            try:
+                fluor_info = _get_or_raise_suggestion(
+                    name, self._fluorophore_ids, "Protein"
+                )
+                if fluor_info["type"] == "p":
+                    # Use name as alias, create safe alias if needed
+                    alias = _make_safe_alias(name)
+                    items[alias] = {"id": fluor_info["id"]}
+                    name_to_alias[name] = alias
+            except ValueError:
+                # Name not found, will return None for this entry
+                pass
+
+        if not items:
+            return dict.fromkeys(names)
+
+        # Extract fields from PROTEIN_QUERY template
+        fields = _extract_fields_from_query(PROTEIN_QUERY)
+
+        # Build and execute multi-item query
+        query = build_multiple_query("protein", items, fields)
+        resp = self._send_query(query)
+        data = json.loads(resp)["data"]
+
+        # Map aliases back to original names and parse responses
+        results: dict[str, Protein | None] = {}
+
+        for name in names:
+            alias = name_to_alias.get(name)
+            if alias and alias in data:
+                protein_data = data[alias]
+                if protein_data is None:
+                    results[name] = None
+                else:
+                    # Wrap in response structure for validation
+                    wrapped = {"data": {"protein": protein_data}}
+                    results[name] = ProteinResponse.model_validate(wrapped).data.protein
+            else:
+                # Name wasn't found in cache
+                results[name] = None
+
+        return results
+
+    def get_multiple_dyes(self, names: Sequence[str]) -> dict[str, Fluorophore | None]:
+        """Fetch multiple dyes by name in a single request.
+
+        Parameters
+        ----------
+        names : Sequence[str]
+            Dye names or slugs to fetch
+
+        Returns
+        -------
+        dict[str, Fluorophore | None]
+            Mapping of input name -> Fluorophore object (or None if not found)
+
+        Examples
+        --------
+        >>> dyes = client.get_multiple_dyes(["DAPI", "Hoechst 33342"])
+        """
+        if not names:
+            return {}
+
+        # Resolve names to IDs using existing _fluorophore_ids cache
+        items = {}
+        name_to_alias = {}
+        for name in names:
+            try:
+                fluor_info = _get_or_raise_suggestion(
+                    name, self._fluorophore_ids, "Dye"
+                )
+                if fluor_info["type"] == "d":
+                    # Use name as alias, create safe alias if needed
+                    alias = _make_safe_alias(name)
+                    items[alias] = {"id": int(fluor_info["id"])}
+                    name_to_alias[name] = alias
+            except ValueError:
+                # Name not found, will return None for this entry
+                pass
+
+        if not items:
+            return dict.fromkeys(names)
+
+        # Extract fields from DYE_QUERY template
+        fields = _extract_fields_from_query(DYE_QUERY)
+
+        # Build and execute multi-item query
+        query = build_multiple_query("dye", items, fields)
+        resp = self._send_query(query)
+        data = json.loads(resp)["data"]
+
+        # Map aliases back to original names and parse responses
+        results: dict[str, Fluorophore | None] = {}
+
+        for name in names:
+            alias = name_to_alias.get(name)
+            if alias and alias in data:
+                dye_data = data[alias]
+                if dye_data is None:
+                    results[name] = None
+                else:
+                    # Wrap in response structure for validation
+                    wrapped = {"data": {"dye": dye_data}}
+                    results[name] = DyeResponse.model_validate(wrapped).data.dye
+            else:
+                # Name wasn't found in cache
+                results[name] = None
+
+        return results
+
+    def get_multiple_microscopes(
+        self, ids: Sequence[str]
+    ) -> dict[str, Microscope | None]:
+        """Fetch multiple microscopes by ID in a single request.
+
+        Parameters
+        ----------
+        ids : Sequence[str]
+            Microscope IDs to fetch
+
+        Returns
+        -------
+        dict[str, Microscope | None]
+            Mapping of ID -> Microscope object (or None if not found)
+
+        Examples
+        --------
+        >>> scopes = client.get_multiple_microscopes(["i6WL2W"])
+        """
+        if not ids:
+            return {}
+
+        # Build items dict with safe aliases
+        items = {}
+        id_to_alias = {}
+        for microscope_id in ids:
+            alias = _make_safe_alias(microscope_id)
+            items[alias] = {"id": microscope_id}
+            id_to_alias[microscope_id] = alias
+
+        # Extract fields from MICROSCOPE_QUERY template
+        fields = _extract_fields_from_query(MICROSCOPE_QUERY)
+
+        # Build and execute multi-item query
+        query = build_multiple_query("microscope", items, fields)
+        resp = self._send_query(query)
+        data = json.loads(resp)["data"]
+
+        # Map aliases back to original IDs and parse responses
+        results: dict[str, Microscope | None] = {}
+
+        for microscope_id in ids:
+            alias = id_to_alias[microscope_id]
+            if alias in data:
+                microscope_data = data[alias]
+                if microscope_data is None:
+                    results[microscope_id] = None
+                else:
+                    # Wrap in response structure for validation
+                    wrapped = {"data": {"microscope": microscope_data}}
+                    results[microscope_id] = MicroscopeResponse.model_validate(
+                        wrapped
+                    ).data.microscope
+            else:
+                results[microscope_id] = None
+
+        return results
+
 
 def _norm_name(name: str) -> str:
     return name.lower().replace(" ", "-").replace("/", "-")
+
+
+def _make_safe_alias(name: str) -> str:
+    """Convert a name to a safe GraphQL alias."""
+    alias = re.sub(r"[^a-zA-Z0-9]", "_", name)
+    if not alias or not alias[0].isalpha():
+        alias = f"item_{alias}"
+    return alias.lower()
+
+
+def _extract_fields_from_query(query_template: str) -> str:
+    """Extract the fields portion from a single-item query template.
+
+    Parameters
+    ----------
+    query_template : str
+        A GraphQL query template like PROTEIN_QUERY
+
+    Returns
+    -------
+    str
+        The fields portion (everything between the innermost { and })
+    """
+    # Find the last occurrence of the query name (protein, dye, microscope)
+    # and extract everything between its opening { and closing }
+    # This works for nested queries by finding the innermost query
+    lines = query_template.strip().split("\n")
+    # Skip the query declaration line and get the body
+    start_idx = None
+    brace_count = 0
+    fields_lines = []
+
+    for i, line in enumerate(lines):
+        if "{" in line and start_idx is None:
+            # Found first opening brace (after query declaration)
+            start_idx = i + 1
+            brace_count = line.count("{") - line.count("}")
+            continue
+
+        if start_idx is not None:
+            brace_count += line.count("{") - line.count("}")
+            if brace_count > 0:
+                fields_lines.append(line)
+            else:
+                # Reached the closing brace
+                break
+
+    # Clean up the fields: remove leading/trailing whitespace and closing braces
+    fields = "\n".join(fields_lines).strip()
+    # Remove the outer query wrapper (protein(id: $id) {...})
+    # We want just the inner fields
+    if "(" in fields.split("{")[0]:
+        # Remove everything before the first {
+        fields = "{".join(fields.split("{")[1:])
+        # Remove the last }
+        fields = "}".join(fields.rsplit("}", 1)[:-1])
+
+    return fields.strip()
 
 
 def get_microscope(id: str = "i6WL2W") -> Microscope:
@@ -274,6 +533,18 @@ def list_cameras() -> list[str]:
 
 def list_light_sources() -> list[str]:
     return FPbaseClient.instance().list_light_sources()
+
+
+def get_multiple_proteins(names: Sequence[str]) -> dict[str, Protein | None]:
+    return FPbaseClient.instance().get_multiple_proteins(names)
+
+
+def get_multiple_dyes(names: Sequence[str]) -> dict[str, Fluorophore | None]:
+    return FPbaseClient.instance().get_multiple_dyes(names)
+
+
+def get_multiple_microscopes(ids: Sequence[str]) -> dict[str, Microscope | None]:
+    return FPbaseClient.instance().get_multiple_microscopes(ids)
 
 
 def _get_or_raise_suggestion(

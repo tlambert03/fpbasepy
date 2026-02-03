@@ -1,3 +1,42 @@
+from __future__ import annotations
+
+from typing import Any
+
+
+def build_multiple_query(
+    query_name: str,
+    items: dict[str, dict[str, Any]],
+    fields: str,
+) -> str:
+    """Build a GraphQL query to fetch multiple items using aliases.
+
+    Parameters
+    ----------
+    query_name : str
+        The GraphQL query name (e.g., "protein", "dye")
+    items : dict[str, dict[str, Any]]
+        Mapping of alias -> query arguments
+        e.g., {"egfp": {"id": "R9NL8"}, "mcherry": {"id": "ZERB6"}}
+    fields : str
+        The fields to query for each item
+
+    Returns
+    -------
+    str
+        GraphQL query string with aliases
+    """
+    query_parts = []
+    for alias, args in items.items():
+        # Build argument string: id: "value", name: "value"
+        args_str = ", ".join(
+            f'{k}: "{v}"' if isinstance(v, str) else f"{k}: {v}"
+            for k, v in args.items()
+        )
+        query_parts.append(f"{alias}: {query_name}({args_str}) {{ {fields} }}")
+
+    return "{ " + " ".join(query_parts) + " }"
+
+
 MICROSCOPE_QUERY = """
 query getMicroscope($id: String!) {
     microscope(id: $id) {

@@ -95,3 +95,73 @@ def test_generic_gql_query() -> None:
 @pytest.mark.parametrize("name", ["Clover1.5", "6C", "dClover2 A206K"])
 def test_fluors_with_no_pdb(name: str) -> None:
     fpbase.get_fluorophore(name)
+
+
+def test_get_multiple_proteins() -> None:
+    proteins = fpbase.get_multiple_proteins(["EGFP", "mCherry", "mTurquoise2"])
+    assert len(proteins) == 3
+    assert proteins["EGFP"] is not None
+    assert proteins["EGFP"].name == "EGFP"
+    assert proteins["mCherry"] is not None
+    assert proteins["mCherry"].name == "mCherry"
+    assert proteins["mTurquoise2"] is not None
+    assert proteins["mTurquoise2"].name == "mTurquoise2"
+    # Check that spectral data is included
+    assert proteins["EGFP"].default_state.spectra
+    assert proteins["EGFP"].default_state.excitation_spectrum is not None
+    assert proteins["EGFP"].default_state.emission_spectrum is not None
+
+
+def test_get_multiple_proteins_with_invalid() -> None:
+    """Test that invalid names return None in results."""
+    proteins = fpbase.get_multiple_proteins(["EGFP", "NotAProtein"])
+    assert len(proteins) == 2
+    assert proteins["EGFP"] is not None
+    assert proteins["EGFP"].name == "EGFP"
+    assert proteins["NotAProtein"] is None
+
+
+def test_get_multiple_proteins_empty() -> None:
+    """Test empty input."""
+    proteins = fpbase.get_multiple_proteins([])
+    assert proteins == {}
+
+
+def test_get_multiple_dyes() -> None:
+    # Use actual dye names from the database
+    dyes = fpbase.get_multiple_dyes(["DAPI", "Hoechst 33342"])
+    assert len(dyes) == 2
+    assert dyes["DAPI"] is not None
+    assert dyes["DAPI"].name == "DAPI"
+    assert dyes["Hoechst 33342"] is not None
+    assert dyes["Hoechst 33342"].name == "Hoechst 33342"
+    # Check that spectral data is included
+    assert dyes["DAPI"].default_state.spectra
+
+
+def test_get_multiple_dyes_with_invalid() -> None:
+    """Test that invalid dye names return None in results."""
+    dyes = fpbase.get_multiple_dyes(["DAPI", "NotADye"])
+    assert len(dyes) == 2
+    assert dyes["DAPI"] is not None
+    assert dyes["NotADye"] is None
+
+
+def test_get_multiple_microscopes() -> None:
+    # Use actual microscope IDs
+    microscopes = fpbase.get_multiple_microscopes(["wKqWbgApvguSNDSRZNSfpN"])
+    assert len(microscopes) == 1
+    assert microscopes["wKqWbgApvguSNDSRZNSfpN"] is not None
+    assert microscopes["wKqWbgApvguSNDSRZNSfpN"].name == "Example Simple Widefield"
+    # Check that optical configs are included
+    assert microscopes["wKqWbgApvguSNDSRZNSfpN"].opticalConfigs
+
+
+def test_get_multiple_microscopes_with_invalid() -> None:
+    """Test that invalid microscope IDs return None in results."""
+    microscopes = fpbase.get_multiple_microscopes(
+        ["wKqWbgApvguSNDSRZNSfpN", "InvalidID"]
+    )
+    assert len(microscopes) == 2
+    assert microscopes["wKqWbgApvguSNDSRZNSfpN"] is not None
+    assert microscopes["InvalidID"] is None
