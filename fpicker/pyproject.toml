@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fpicker"
+version = "0.1.0"
+description = "Fluorophore panel optimizer: jointly select fluorophores and design imaging configurations"
+readme = "README.md"
+license = "BSD-3-Clause"
+requires-python = ">=3.10"
+authors = [{ name = "Talley Lambert", email = "talley.lambert@gmail.com" }]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "pymoo>=0.6",
+    "fpbase",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.6"]
+test = ["pytest>=7.0", "pytest-cov"]
+dev = ["fpicker[plot,test]", "ipython", "ruff", "mypy"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fpicker"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "RUF"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
