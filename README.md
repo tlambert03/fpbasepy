@@ -44,6 +44,15 @@ See all response model types in `fpbase.models`.
 
 * `fpbase.graphql_query` : Send generic GraphQL query to FPbase (see <https://www.fpbase.org/graphql> for full documentation on the graphql schema and an interactive playground)
 
+### Caching and rate limits
+
+Lookup tables (e.g. the names of all proteins, dyes and filters) are cached on
+disk for 24 hours, so that new Python processes don't need to download them again.
+Set the `FPBASE_CACHE_DIR` environment variable to change the cache location.
+
+The FPbase API is rate limited. Throttled requests are automatically retried after
+the delay requested by the server.
+
 ## Example Usage
 
 ```python
