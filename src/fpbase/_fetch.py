@@ -4,13 +4,24 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import sys
+import tempfile
 import threading
+import time
+import warnings
 from difflib import get_close_matches
 from functools import cached_property
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
+from urllib.parse import urlsplit
 
 import requests
+from requests.adapters import HTTPAdapter
+from requests.auth import AuthBase
+from urllib3.util.retry import Retry
 
+from . import __version__
 from ._graphql import DYE_QUERY, MICROSCOPE_QUERY, PROTEIN_QUERY, SPECTRUM_QUERY
 from .models import (
     Camera,
@@ -30,7 +41,98 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 FPBASE_URL: Final = "https://www.fpbase.org/graphql/"
-_HEADERS = {"Content-Type": "application/json", "User-Agent": "fpbase-py"}
+ISSUES_URL: Final = "https://github.com/tlambert03/fpbasepy/issues"
+# the version lets the server tell client versions apart (e.g. which support API keys)
+USER_AGENT: Final = f"fpbase-py/{__version__} (+https://github.com/tlambert03/fpbasepy)"
+_HEADERS = {"Content-Type": "application/json", "User-Agent": USER_AGENT}
+# header the server can use to send a message to users (e.g. upcoming API changes)
+NOTICE_HEADER: Final = "X-FPbase-Notice"
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+# wait and retry when throttled (429) or the server is briefly unavailable,
+# honoring the server's Retry-After header
+_RETRY = Retry(
+    total=5,
+    backoff_factor=1,
+    status_forcelist=(429, 502, 503, 504),
+    allowed_methods=None,  # retry POST too: graphql queries are read-only
+    respect_retry_after_header=True,
+    raise_on_status=False,  # return the last response, so raise_for_status() raises
+)
+# how long lookup tables (e.g. all protein names) are cached on disk
+DISK_CACHE_TTL: Final = 24 * 60 * 60  # seconds
+
+
+class FPbaseWarning(UserWarning):
+    """A message from the FPbase server."""
+
+
+class _ApiKeyAuth(AuthBase):
+    """Send the API key as a bearer token, but only over HTTPS (or to localhost)."""
+
+    def __init__(self, api_key: str) -> None:
+        self.api_key = api_key
+
+    def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
+        url = urlsplit(r.url or "")
+        if url.scheme == "https" or url.hostname in _LOCAL_HOSTS:
+            r.headers["Authorization"] = f"Bearer {self.api_key}"
+        return r
+
+
+_shown_notices: set[str] = set()
+
+
+def _warn_notice(response: requests.Response, *args: Any, **kwargs: Any) -> None:
+    if (notice := response.headers.get(NOTICE_HEADER)) and notice not in _shown_notices:
+        _shown_notices.add(notice)
+        warnings.warn(notice, FPbaseWarning, stacklevel=2)
+
+
+def _new_session(api_key: str | None = None) -> requests.Session:
+    session = requests.Session()
+    session.headers.update(_HEADERS)
+    adapter = HTTPAdapter(max_retries=_RETRY)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    if api_key := api_key or os.environ.get("FPBASE_API_KEY"):
+        session.auth = _ApiKeyAuth(api_key)
+    session.hooks["response"].append(_warn_notice)
+    return session
+
+
+def _raise_for_status(response: requests.Response) -> None:
+    """Like `response.raise_for_status()`, with an explanation of common errors."""
+    if response.ok:
+        return
+    if response.headers.get("cf-mitigated") == "challenge":
+        msg = (
+            "FPbase's bot protection blocked this request, which usually happens "
+            "on cloud servers (e.g. AWS, Azure). If this persists, please open an "
+            f"issue at {ISSUES_URL}"
+        )
+    else:
+        msg = f"FPbase returned HTTP {response.status_code}"
+        if response.status_code == 429:
+            msg += " (rate limit exceeded, even after waiting and retrying)"
+        if detail := _error_detail(response):
+            msg += f": {detail}"
+    raise requests.HTTPError(msg, response=response)
+
+
+def _error_detail(response: requests.Response) -> str | None:
+    """Return the error message in a JSON (DRF or GraphQL) error response."""
+    try:
+        data = response.json()
+    except ValueError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    if isinstance(detail := data.get("detail"), str):
+        return detail
+    if (errors := data.get("errors")) and isinstance(errors, list):
+        first = errors[0]
+        return str(first.get("message", first) if isinstance(first, dict) else first)
+    return None
 
 
 class FPbaseClient:
@@ -45,10 +147,18 @@ class FPbaseClient:
                     cls.__instance = cls()
         return cls.__instance
 
-    def __init__(self, base_url: str = FPBASE_URL):
+    def __init__(self, base_url: str = FPBASE_URL, api_key: str | None = None):
+        """Create a client.
+
+        Parameters
+        ----------
+        base_url : str
+            URL of the FPbase GraphQL endpoint.
+        api_key : str | None
+            FPbase API key. Defaults to the `FPBASE_API_KEY` environment variable.
+        """
         self.base_url = base_url
-        self.session = requests.Session()
-        self.session.headers.update(_HEADERS)
+        self.session = _new_session(api_key)
         self._cache: dict[str, bytes] = {}
 
     def get_microscope(self, id: str = "i6WL2W") -> Microscope:
@@ -169,20 +279,29 @@ class FPbaseClient:
 
     # -----------------------------------------------------------
 
-    def _send_query(self, query: str, variables: dict | None = None) -> bytes:
-        # Create a hash
+    def _send_query(
+        self, query: str, variables: dict | None = None, *, persist: bool = False
+    ) -> bytes:
+        """Send query, caching in memory (and on disk for `persist=True`)."""
         if (key := _hashargs(self.base_url, query, variables)) not in self._cache:
-            payload = {"query": query, "variables": variables or {}}
-            data = json.dumps(payload).encode("utf-8")
-            response = self.session.post(self.base_url, data=data)
-            response.raise_for_status()
-            self._cache[key] = response.content
+            content = _read_disk_cache(key) if persist else None
+            if content is None:
+                payload = {"query": query, "variables": variables or {}}
+                data = json.dumps(payload).encode("utf-8")
+                response = self.session.post(self.base_url, data=data)
+                _raise_for_status(response)
+                content = response.content
+                if persist and "errors" not in json.loads(content):
+                    _write_disk_cache(key, content)
+            self._cache[key] = content
         return self._cache[key]
 
     @cached_property
     def _fluorophore_ids(self) -> dict[str, dict[str, str]]:
         """Return a lookup table of fluorophore {name: {id: ..., type: ...}}."""
-        resp = self._send_query("{ dyes { id name slug } proteins { id name slug } }")
+        resp = self._send_query(
+            "{ dyes { id name slug } proteins { id name slug } }", persist=True
+        )
         data: dict[str, list[dict[str, str]]] = json.loads(resp)["data"]
         lookup: dict[str, dict[str, str]] = {}
         for key in ["dyes", "proteins"]:
@@ -207,7 +326,7 @@ class FPbaseClient:
 
     def _get_spectrum_ids(self, key: str) -> dict[str, int]:
         query = f'{{ spectra(category: "{key}") {{ id owner {{ name }} }} }}'
-        resp = self._send_query(query)
+        resp = self._send_query(query, persist=True)
         data = json.loads(resp)["data"]["spectra"]
         return {_norm_name(item["owner"]["name"]): int(item["id"]) for item in data}
 
@@ -310,7 +429,8 @@ def graphql_query(
     variables : dict | None, optional
         If the query requires variables, pass them here, by default None
     session : requests.Session | None, optional
-        Optionally pass a requests session, by default, will create a new session.
+        Optionally pass a requests session. By default, a shared session is used
+        that retries throttled (429) and briefly-unavailable requests.
 
     Returns
     -------
@@ -355,7 +475,41 @@ def _fetch_query(
 ) -> bytes:
     payload = {"query": query, "variables": variables or {}}
     data = json.dumps(payload).encode("utf-8")
-    post = requests.post if session is None else session.post
-    response = post(url, data=data, headers=_HEADERS)
-    response.raise_for_status()
+    session = session or FPbaseClient.instance().session
+    response = session.post(url, data=data, headers=_HEADERS)
+    _raise_for_status(response)
     return response.content
+
+
+def _cache_dir() -> Path:
+    if env := os.environ.get("FPBASE_CACHE_DIR"):
+        return Path(env)
+    if sys.platform == "win32":
+        base = os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Caches"
+    else:
+        base = os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")
+    return Path(base) / "fpbase"
+
+
+def _read_disk_cache(key: str) -> bytes | None:
+    path = _cache_dir() / f"{key}.json"
+    try:
+        if time.time() - path.stat().st_mtime < DISK_CACHE_TTL:
+            return path.read_bytes()
+    except OSError:
+        pass
+    return None
+
+
+def _write_disk_cache(key: str, content: bytes) -> None:
+    # write atomically: many processes may start at once (e.g. jobs on a cluster)
+    try:
+        cache_dir = _cache_dir()
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as f:
+            f.write(content)
+        os.replace(f.name, cache_dir / f"{key}.json")
+    except OSError:
+        pass  # the disk cache is best-effort (e.g. read-only home directory)
