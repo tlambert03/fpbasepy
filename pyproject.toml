@@ -33,7 +33,8 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
 ]
-dependencies = ['pydantic', 'requests']
+# urllib3 is imported directly, for Retry(allowed_methods=...), added in 1.26
+dependencies = ['pydantic', 'requests', 'urllib3>=1.26']
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
