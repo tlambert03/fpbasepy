@@ -14,7 +14,7 @@ from difflib import get_close_matches
 from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -44,7 +44,10 @@ FPBASE_URL: Final = "https://www.fpbase.org/graphql/"
 ISSUES_URL: Final = "https://github.com/tlambert03/fpbasepy/issues"
 # the version lets the server tell client versions apart (e.g. which support API keys)
 USER_AGENT: Final = f"fpbase-py/{__version__} (+https://github.com/tlambert03/fpbasepy)"
-_HEADERS = {"Content-Type": "application/json", "User-Agent": USER_AGENT}
+_HEADERS = {"User-Agent": USER_AGENT}
+# Queries are sent as GET requests, which the server's CDN can cache, unless the
+# URL would be longer than this (then they are sent as POST requests).
+MAX_GET_URL_LENGTH: Final = 2000
 # header the server can use to send a message to users (e.g. upcoming API changes)
 NOTICE_HEADER: Final = "X-FPbase-Notice"
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
@@ -125,6 +128,24 @@ def _new_session(api_key: str | None = None) -> requests.Session:
         session.auth = _ApiKeyAuth(api_key)
     session.hooks["response"].append(_warn_notice)
     return session
+
+
+def _send(
+    session: requests.Session, url: str, query: str, variables: dict | None = None
+) -> requests.Response:
+    """Send a GraphQL query, as a GET request if the URL is short enough."""
+    # the same query and variables must always give the same URL, to share a cache entry
+    params = {"query": query}
+    if variables:
+        params["variables"] = json.dumps(
+            variables, sort_keys=True, separators=(",", ":")
+        )
+    get_url = f"{url}?{urlencode(params)}"
+    if len(get_url) <= MAX_GET_URL_LENGTH:
+        return session.get(get_url, headers=_HEADERS)
+    data = json.dumps({"query": query, "variables": variables or {}}).encode("utf-8")
+    headers = {**_HEADERS, "Content-Type": "application/json"}
+    return session.post(url, data=data, headers=headers)
 
 
 def _raise_for_status(response: requests.Response) -> None:
@@ -321,9 +342,7 @@ class FPbaseClient:
         if (key := _hashargs(self.base_url, query, variables)) not in self._cache:
             content = _read_disk_cache(key, ttl) if persist else None
             if content is None:
-                payload = {"query": query, "variables": variables or {}}
-                data = json.dumps(payload).encode("utf-8")
-                response = self.session.post(self.base_url, data=data)
+                response = _send(self.session, self.base_url, query, variables)
                 _raise_for_status(response)
                 content = response.content
                 if persist and "errors" not in json.loads(content):
@@ -465,7 +484,8 @@ def graphql_query(
         If the query requires variables, pass them here, by default None
     session : requests.Session | None, optional
         Optionally pass a requests session. By default, a shared session is used
-        that retries throttled (429) and briefly-unavailable requests.
+        that retries throttled (429) and briefly-unavailable requests.  The query
+        is sent as a GET request, or as a POST request if it is long.
 
     Returns
     -------
@@ -508,10 +528,8 @@ def _fetch_query(
     session: requests.Session | None = None,
     url: str = FPBASE_URL,
 ) -> bytes:
-    payload = {"query": query, "variables": variables or {}}
-    data = json.dumps(payload).encode("utf-8")
     session = session or FPbaseClient.instance().session
-    response = session.post(url, data=data, headers=_HEADERS)
+    response = _send(session, url, query, variables)
     _raise_for_status(response)
     return response.content
 
