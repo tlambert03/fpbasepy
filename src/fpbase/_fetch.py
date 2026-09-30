@@ -48,9 +48,34 @@ _HEADERS = {"Content-Type": "application/json", "User-Agent": USER_AGENT}
 # header the server can use to send a message to users (e.g. upcoming API changes)
 NOTICE_HEADER: Final = "X-FPbase-Notice"
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+# server errors are retried only once: a 503/504 is usually a request that ran past
+# the server's 30s timeout, and resending it just ties up another server worker
+_RETRY_ONCE_STATUSES: Final = frozenset({502, 503, 504})
+
+
+class _Retry(Retry):
+    """Retry throttling (429) patiently, but a server error only once, after a pause."""
+
+    def is_retry(
+        self, method: str, status_code: int, has_retry_after: bool = False
+    ) -> bool:
+        if status_code in _RETRY_ONCE_STATUSES and any(
+            h.status in _RETRY_ONCE_STATUSES for h in self.history
+        ):
+            return False
+        return super().is_retry(method, status_code, has_retry_after)
+
+    def get_backoff_time(self) -> float:
+        backoff = super().get_backoff_time()
+        if self.history and self.history[-1].status in _RETRY_ONCE_STATUSES:
+            # give a restarting or overloaded server a moment
+            return max(backoff, 5 * self.backoff_factor)
+        return backoff
+
+
 # wait and retry when throttled (429) or the server is briefly unavailable,
 # honoring the server's Retry-After header
-_RETRY = Retry(
+_RETRY = _Retry(
     total=5,
     backoff_factor=1,
     status_forcelist=(429, 502, 503, 504),
