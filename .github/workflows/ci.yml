@@ -79,15 +79,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.x"
+      - uses: astral-sh/setup-uv@v10.2.0
 
       - name: 👷 Build
-        run: |
-          python -m pip install build
-          python -m build
+        run: uv build
 
       - name: 🚢 Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
