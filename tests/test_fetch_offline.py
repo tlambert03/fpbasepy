@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import TYPE_CHECKING, Any
 
@@ -24,6 +25,7 @@ RESPONSE = {"data": {"dyes": [], "proteins": []}}
 class FakeServer:
     def __init__(self) -> None:
         self.statuses: list[int] = []  # statuses to send before succeeding
+        self.response: dict = RESPONSE
         self.response_headers: dict[str, str] = {}
         self.error_body: dict | None = None
         self.request_headers: list[dict[str, str]] = []
@@ -41,7 +43,7 @@ class FakeServer:
                     self.send_header(key, value)
                 self.end_headers()
                 if status == 200:
-                    self.wfile.write(json.dumps(RESPONSE).encode())
+                    self.wfile.write(json.dumps(server.response).encode())
                 elif server.error_body is not None:
                     self.wfile.write(json.dumps(server.error_body).encode())
 
@@ -113,6 +115,34 @@ def test_disk_cache_shared_between_clients(
     # a new client (e.g. a new process) reads from disk instead of the server
     assert make_client()._fluorophore_ids == {}
     assert len(server.request_headers) == 1
+
+
+MICROSCOPE = {
+    "data": {"microscope": {"id": "abc", "name": "Scope", "opticalConfigs": []}}
+}
+
+
+def test_microscope_cached_on_disk(
+    server: FakeServer, make_client: Callable[..., FPbaseClient]
+) -> None:
+    server.response = MICROSCOPE
+    assert make_client().get_microscope("abc").name == "Scope"
+    # a new client (e.g. the same script run again) reads it from disk
+    assert make_client().get_microscope("abc").name == "Scope"
+    assert len(server.request_headers) == 1
+
+
+def test_microscope_disk_cache_expires(
+    server: FakeServer,
+    make_client: Callable[..., FPbaseClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server.response = MICROSCOPE
+    make_client().get_microscope("abc")
+    later = time.time() + _fetch.MICROSCOPE_CACHE_TTL + 1
+    monkeypatch.setattr(_fetch.time, "time", lambda: later)
+    make_client().get_microscope("abc")
+    assert len(server.request_headers) == 2
 
 
 def test_non_persisted_queries_not_cached_on_disk(
