@@ -7,6 +7,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 import requests
@@ -30,12 +31,15 @@ class FakeServer:
         self.response_headers: dict[str, str] = {}
         self.error_body: dict | None = None
         self.request_headers: list[dict[str, str]] = []
+        self.requests: list[tuple[str, str]] = []  # (method, path)
         server = self
 
         class Handler(BaseHTTPRequestHandler):
-            def do_POST(self) -> None:
+            def do_GET(self) -> None:
                 server.request_headers.append(dict(self.headers))
-                self.rfile.read(int(self.headers["Content-Length"]))
+                server.requests.append((self.command, self.path))
+                if length := int(self.headers.get("Content-Length", 0)):
+                    self.rfile.read(length)
                 status = server.statuses.pop(0) if server.statuses else 200
                 self.send_response(status)
                 if status == 429:
@@ -47,6 +51,8 @@ class FakeServer:
                     self.wfile.write(json.dumps(server.response).encode())
                 elif server.error_body is not None:
                     self.wfile.write(json.dumps(server.error_body).encode())
+
+            do_POST = do_GET
 
             def log_message(self, *args: object) -> None:
                 pass
@@ -192,6 +198,55 @@ def test_non_persisted_queries_not_cached_on_disk(
 ) -> None:
     make_client()._send_query("{ dyes { id } }")
     assert not list(cache_dir.glob("*.json"))
+
+
+def test_queries_sent_as_get(
+    server: FakeServer, make_client: Callable[..., FPbaseClient]
+) -> None:
+    make_client()._send_query("{ dyes { id } }")
+    make_client()._send_query("query ($a: Int, $b: Int) { x }", {"b": 2, "a": 1})
+    # variables in a fixed order, so that equal requests have equal (cacheable) URLs
+    assert server.requests == [
+        ("GET", "/graphql/?query=%7B+dyes+%7B+id+%7D+%7D"),
+        (
+            "GET",
+            "/graphql/?query=query+%28%24a%3A+Int%2C+%24b%3A+Int%29+%7B+x+%7D"
+            "&variables=%7B%22a%22%3A1%2C%22b%22%3A2%7D",
+        ),
+    ]
+    # a JSON content type would have the server parse the (empty) body
+    assert "Content-Type" not in server.request_headers[0]
+
+
+def test_get_url_encoding(server: FakeServer) -> None:
+    query = '{ dye(name: "a&b #1 + 50% \u00e9") {\n id } }'
+    with requests.Session() as session:
+        # (a base URL that already has a query string)
+        _fetch._send(session, f"{server.url}?x=1", query, {"id": "a b"})
+    ((method, path),) = server.requests
+    assert method == "GET"
+    parsed = parse_qs(urlsplit(path).query, strict_parsing=True)
+    assert parsed == {"x": ["1"], "query": [query], "variables": ['{"id":"a b"}']}
+
+
+def test_long_queries_sent_as_post(
+    server: FakeServer, make_client: Callable[..., FPbaseClient]
+) -> None:
+    fields = " ".join(["id"] * _fetch.MAX_GET_URL_LENGTH)
+    query = f"{{ dyes {{ {fields} }} }}"
+    make_client()._send_query(query)
+    assert server.requests == [("POST", "/graphql/")]
+    assert server.request_headers[0]["Content-Type"] == "application/json"
+
+
+def test_graphql_query_sent_as_get(
+    server: FakeServer, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(_fetch, "FPBASE_URL", server.url)
+    monkeypatch.setattr(_fetch, "_RESPONSE_CACHE", {})
+    with requests.Session() as session:
+        assert fpbase.graphql_query("{ dyes { id } }", session=session) == RESPONSE
+    assert server.requests == [("GET", "/graphql/?query=%7B+dyes+%7B+id+%7D+%7D")]
 
 
 def test_user_agent_includes_version(
