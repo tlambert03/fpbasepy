@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import requests
+from urllib3.util.retry import RequestHistory
 
 import fpbase
 from fpbase import _fetch
@@ -102,6 +103,47 @@ def test_raises_when_retries_exhausted(
     with pytest.raises(requests.HTTPError, match="429"):
         client._send_query("{ dyes { id } }")
     assert len(server.request_headers) == 6  # the first try, and 5 retries
+
+
+@pytest.mark.parametrize("status", [502, 503, 504])
+def test_server_errors_retried_once(
+    server: FakeServer, make_client: Callable[..., FPbaseClient], status: int
+) -> None:
+    server.statuses = [status]
+    client = make_client()
+    assert json.loads(client._send_query("{ dyes { id } }")) == RESPONSE
+    assert len(server.request_headers) == 2
+
+
+def test_server_errors_not_retried_twice(
+    server: FakeServer, make_client: Callable[..., FPbaseClient]
+) -> None:
+    # e.g. a query that runs past the server's timeout: resending it won't help
+    server.statuses = [503, 503, 503]
+    client = make_client()
+    with pytest.raises(requests.HTTPError, match="503"):
+        client._send_query("{ dyes { id } }")
+    assert len(server.request_headers) == 2
+
+
+def test_throttling_then_server_error(
+    server: FakeServer, make_client: Callable[..., FPbaseClient]
+) -> None:
+    server.statuses = [429, 429, 503]
+    client = make_client()
+    assert json.loads(client._send_query("{ dyes { id } }")) == RESPONSE
+    assert len(server.request_headers) == 4
+
+
+def test_server_error_retry_waits() -> None:
+    """The one retry after a server error pauses; throttling uses Retry-After."""
+    retry = _fetch._Retry(backoff_factor=1)
+    after = {
+        status: retry.new(history=(RequestHistory("POST", "/", None, status, None),))
+        for status in (429, 503)
+    }
+    assert after[503].get_backoff_time() == 5
+    assert after[429].get_backoff_time() == 0
 
 
 def test_disk_cache_shared_between_clients(
