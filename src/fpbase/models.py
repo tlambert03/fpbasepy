@@ -1,7 +1,7 @@
 """Main fetching logic."""
 
 from collections.abc import Sequence
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Annotated, Any, Optional, TypeVar
 
 from pydantic import (
@@ -41,7 +41,7 @@ __all__ = [
 ]
 
 
-class SpectrumType(str, Enum):
+class SpectrumType(StrEnum):
     """Spectrum types."""
 
     A_2P = "A_2P"
@@ -66,7 +66,7 @@ class SpectrumType(str, Enum):
         return repr(self.value)
 
 
-class FilterPath(str, Enum):
+class FilterPath(StrEnum):
     """Placement of a filter in an optical config."""
 
     EX = "EX"
@@ -82,7 +82,7 @@ class FilterPath(str, Enum):
         return repr(self.value)
 
 
-class Olig(str, Enum):
+class Olig(StrEnum):
     MONOMER = "M"
     DIMER = "D"
     TANDEM_DIMER = "TD"
@@ -94,7 +94,7 @@ class Olig(str, Enum):
         return self.value
 
 
-class SwitchType(str, Enum):
+class SwitchType(StrEnum):
     BASIC = "B"
     PHOTOACTIVATABLE = "PA"
     PHOTOSWITCHABLE = "PS"
@@ -132,9 +132,9 @@ class Filter(SpectrumOwner):
     """A filter with its properties."""
 
     manufacturer: str = ""
-    bandcenter: Optional[float] = None
-    bandwidth: Optional[float] = None
-    edge: Optional[float] = None
+    bandcenter: float | None = None
+    bandwidth: float | None = None
+    edge: float | None = None
 
 
 class Camera(SpectrumOwner):
@@ -150,17 +150,17 @@ class State(BaseModel):
 
     id: int
     name: str
-    exMax: Optional[float] = None  # nanometers
-    emMax: Optional[float] = None  # nanometers
+    exMax: float | None = None  # nanometers
+    emMax: float | None = None  # nanometers
     emhex: str = ""
     exhex: str = ""
-    ext_coeff: Optional[float] = Field(None, alias="extCoeff")  # M^-1 cm^-1
-    qy: Optional[float] = None
+    ext_coeff: float | None = Field(None, alias="extCoeff")  # M^-1 cm^-1
+    qy: float | None = None
     spectra: SafeList[Spectrum] = Field(default_factory=list)
-    lifetime: Optional[float] = None  # ns
+    lifetime: float | None = None  # ns
 
     @property
-    def excitation_spectrum(self) -> Optional[Spectrum]:
+    def excitation_spectrum(self) -> Spectrum | None:
         """Return the excitation spectrum, absorption spectrum, or None."""
         spect = next((s for s in self.spectra if s.subtype == "EX"), None)
         if not spect:  # pragma: no cover
@@ -168,7 +168,7 @@ class State(BaseModel):
         return spect
 
     @property
-    def emission_spectrum(self) -> Optional[Spectrum]:
+    def emission_spectrum(self) -> Spectrum | None:
         """Return the emission spectrum or None."""
         return next((s for s in self.spectra if s.subtype == "EM"), None)
 
@@ -178,7 +178,7 @@ class Fluorophore(BaseModel):
 
     name: str
     id: str
-    default_state: Optional[State] = Field(None, alias="defaultState")
+    default_state: State | None = Field(None, alias="defaultState")
     states: SafeList[State] = Field(default_factory=list)
 
     @model_validator(mode="before")
@@ -213,13 +213,13 @@ class Reference(BaseModel):
 
 
 class Protein(Fluorophore):
-    seq: Optional[str] = None
+    seq: str | None = None
     pdb: SafeList[str] = Field(default_factory=list)
-    genbank: Optional[str] = None
-    uniprot: Optional[str] = None
-    agg: Optional[Olig] = None
-    switch_type: Optional[SwitchType] = Field(None, alias="switchType")
-    primary_reference: Optional[Reference] = Field(None, alias="primaryReference")
+    genbank: str | None = None
+    uniprot: str | None = None
+    agg: Olig | None = None
+    switch_type: SwitchType | None = Field(None, alias="switchType")
+    primary_reference: Reference | None = Field(None, alias="primaryReference")
     references: SafeList[Reference] = Field(default_factory=list)
     states: SafeList[State] = Field(default_factory=list)
     # default_state: Optional[State] = Field(None, alias="defaultState")
@@ -240,7 +240,7 @@ class OpticalConfig(BaseModel):
     filters: SafeList[FilterPlacement]
     camera: Optional["Camera"]
     light: Optional["LightSource"]
-    laser: Optional[int]
+    laser: int | None
 
 
 class Microscope(BaseModel):
