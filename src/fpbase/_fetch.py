@@ -14,7 +14,7 @@ from difflib import get_close_matches
 from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlsplit
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -140,7 +140,8 @@ def _send(
         params["variables"] = json.dumps(
             variables, sort_keys=True, separators=(",", ":")
         )
-    get_url = f"{url}?{urlencode(params)}"
+    # (prepared by requests, in case the URL already has a query string)
+    get_url = requests.Request("GET", url, params=params).prepare().url or ""
     if len(get_url) <= MAX_GET_URL_LENGTH:
         return session.get(get_url, headers=_HEADERS)
     data = json.dumps({"query": query, "variables": variables or {}}).encode("utf-8")

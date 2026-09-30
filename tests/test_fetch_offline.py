@@ -7,6 +7,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 import requests
@@ -215,6 +216,17 @@ def test_queries_sent_as_get(
     ]
     # a JSON content type would have the server parse the (empty) body
     assert "Content-Type" not in server.request_headers[0]
+
+
+def test_get_url_encoding(server: FakeServer) -> None:
+    query = '{ dye(name: "a&b #1 + 50% \u00e9") {\n id } }'
+    with requests.Session() as session:
+        # (a base URL that already has a query string)
+        _fetch._send(session, f"{server.url}?x=1", query, {"id": "a b"})
+    ((method, path),) = server.requests
+    assert method == "GET"
+    parsed = parse_qs(urlsplit(path).query, strict_parsing=True)
+    assert parsed == {"x": ["1"], "query": [query], "variables": ['{"id":"a b"}']}
 
 
 def test_long_queries_sent_as_post(
