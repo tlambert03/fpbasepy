@@ -34,7 +34,12 @@ classifiers = [
     "Typing :: Typed",
 ]
 # urllib3 is imported directly, for Retry(allowed_methods=...), added in 1.26
-dependencies = ["pydantic>=2.8", "requests>=2.31", "urllib3>=1.26"]
+dependencies = [
+    "pydantic>=2.8; python_version < '3.14'",
+    "pydantic>=2.12; python_version >= '3.14'",  # first with 3.14 wheels
+    "requests>=2.31",
+    "urllib3>=1.26",
+]
 
 # https://peps.python.org/pep-0735/
 # setup with `uv sync` or `pip install -e . --group dev`
