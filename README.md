@@ -47,7 +47,8 @@ See all response model types in `fpbase.models`.
 ### Caching and rate limits
 
 Lookup tables (e.g. the names of all proteins, dyes and filters) are cached on
-disk for 24 hours, so that new Python processes don't need to download them again.
+disk for 24 hours, and microscopes for 1 hour, so that new Python processes don't
+need to download them again.
 Set the `FPBASE_CACHE_DIR` environment variable to change the cache location.
 
 The FPbase API is rate limited. Throttled requests are automatically retried after

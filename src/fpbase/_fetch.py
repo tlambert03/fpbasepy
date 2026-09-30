@@ -85,6 +85,8 @@ _RETRY = _Retry(
 )
 # how long lookup tables (e.g. all protein names) are cached on disk
 DISK_CACHE_TTL: Final = 24 * 60 * 60  # seconds
+# microscopes are edited by their owners, so they're cached for less time
+MICROSCOPE_CACHE_TTL: Final = 60 * 60  # seconds
 
 
 class FPbaseWarning(UserWarning):
@@ -193,7 +195,10 @@ class FPbaseClient:
         --------
         >>> get_microscope("i6WL2W")
         """
-        resp = self._send_query(MICROSCOPE_QUERY, {"id": id})
+        # on disk too: a script run repeatedly shouldn't re-download a large microscope
+        resp = self._send_query(
+            MICROSCOPE_QUERY, {"id": id}, persist=True, ttl=MICROSCOPE_CACHE_TTL
+        )
         return MicroscopeResponse.model_validate_json(resp).data.microscope
 
     def get_fluorophore(self, name: str) -> Fluorophore:
@@ -305,11 +310,16 @@ class FPbaseClient:
     # -----------------------------------------------------------
 
     def _send_query(
-        self, query: str, variables: dict | None = None, *, persist: bool = False
+        self,
+        query: str,
+        variables: dict | None = None,
+        *,
+        persist: bool = False,
+        ttl: float = DISK_CACHE_TTL,
     ) -> bytes:
-        """Send query, caching in memory (and on disk for `persist=True`)."""
+        """Send query, caching in memory (and on disk for `ttl` s, if `persist`)."""
         if (key := _hashargs(self.base_url, query, variables)) not in self._cache:
-            content = _read_disk_cache(key) if persist else None
+            content = _read_disk_cache(key, ttl) if persist else None
             if content is None:
                 payload = {"query": query, "variables": variables or {}}
                 data = json.dumps(payload).encode("utf-8")
@@ -518,10 +528,10 @@ def _cache_dir() -> Path:
     return Path(base) / "fpbase"
 
 
-def _read_disk_cache(key: str) -> bytes | None:
+def _read_disk_cache(key: str, ttl: float = DISK_CACHE_TTL) -> bytes | None:
     path = _cache_dir() / f"{key}.json"
     try:
-        if time.time() - path.stat().st_mtime < DISK_CACHE_TTL:
+        if time.time() - path.stat().st_mtime < ttl:
             return path.read_bytes()
     except OSError:
         pass
