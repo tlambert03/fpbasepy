@@ -34,19 +34,19 @@ classifiers = [
     "Typing :: Typed",
 ]
 # urllib3 is imported directly, for Retry(allowed_methods=...), added in 1.26
-dependencies = ['pydantic', 'requests', 'urllib3>=1.26']
+dependencies = ["pydantic>=2.8", "requests>=2.31", "urllib3>=1.26"]
 
-# https://peps.python.org/pep-0621/#dependencies-optional-dependencies
-[project.optional-dependencies]
-test = ["pytest", "pytest-cov"]
+# https://peps.python.org/pep-0735/
+# setup with `uv sync` or `pip install -e . --group dev`
+[dependency-groups]
+test = ["pytest>=8.4.2", "pytest-cov>=7.0.0"]
 dev = [
-    "ipython",
-    "types-requests",
-    "mypy",
-    "pdbpp",          # https://github.com/pdbpp/pdbpp
-    "pre-commit",
-    "rich",           # https://github.com/Textualize/rich
-    "ruff",
+    { include-group = "test" },
+    "types-requests>=2.32.4.20250913",
+    "mypy>=1.19.0",
+    "pre-commit>=4.3.0",
+    "rich>=14.2.0",      # https://github.com/Textualize/rich
+    "ruff>=0.14.7",
 ]
 
 [project.urls]
