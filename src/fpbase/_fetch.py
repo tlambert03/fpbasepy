@@ -492,7 +492,7 @@ def graphql_query(
     return _RESPONSE_CACHE[key]
 
 
-def _hashargs(*args: str | dict | None | tuple) -> str:
+def _hashargs(*args: str | dict | tuple | None) -> str:
     hasher = hashlib.md5()
     for arg in args:
         if isinstance(arg, dict):

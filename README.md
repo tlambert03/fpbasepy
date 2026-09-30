@@ -122,6 +122,7 @@ fpbase.get_fluorophore("DAPI")
 
 <summary>output</summary>
 
+<!-- fmt: off -->
 ```python
 Fluorophore(
     name='DAPI',
@@ -144,6 +145,7 @@ Fluorophore(
     )
 )
 ```
+<!-- fmt: on -->
 
 </details>
 
@@ -156,6 +158,7 @@ fpbase.get_microscope("i6WL2W")
 
 <summary>output</summary>
 
+<!-- fmt: off -->
 ```python
 Microscope(
     id='i6WL2WdgcDMgJYtPrpZcaJ',
@@ -677,5 +680,6 @@ Microscope(
     ]
 )
 ```
+<!-- fmt: on -->
 
 </details>
